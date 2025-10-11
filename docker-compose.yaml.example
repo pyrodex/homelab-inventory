@@ -1,0 +1,44 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: homelab-inventory-backend
+    volumes:
+      - ./data:/app/data
+      - ./targets:/app/prometheus_targets
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/app/data/homelab.db
+      - PROMETHEUS_EXPORT_PATH=/app/prometheus_targets
+    restart: unless-stopped
+    networks:
+      - homelab-network
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: homelab-inventory-frontend
+    ports:
+      - 5000:80
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - homelab-network
+  sqlite-web:
+    image: coleifer/sqlite-web
+    container_name: homelab-inventory-sqlite-web
+    environment:
+      - SQLITE_DATABASE=homelab.db
+    volumes:
+      - ./data:/data
+    ports:
+      - 5001:8080
+    restart: unless-stopped
+    networks:
+      - homelab-network
+
+networks:
+  homelab-network:
+    driver: bridge
