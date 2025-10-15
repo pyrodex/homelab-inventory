@@ -7,8 +7,9 @@ import io
 import os
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
+import logging
 
-app = Flask(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Use environment variable for database path, fallback to current directory
 db_path = os.environ.get('DATABASE_PATH', 'homelab.db')
@@ -262,10 +263,11 @@ def delete_device(device_id):
         return '', 204
     except Exception as e:
         db.session.rollback()
+        logging.error(f"Error deleting device {device_id}: {error_msg}", exc_info=True)
         error_msg = str(e)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
             return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
-        return jsonify({'error': f'Failed to delete device: {error_msg}'}), 500
+        return jsonify({'error': 'Failed to delete device due to an internal error.'}), 500
 
 @app.route('/api/devices/<int:device_id>/monitors', methods=['POST'])
 def add_monitor(device_id):
