@@ -5,6 +5,8 @@ from datetime import datetime
 import yaml
 import io
 import os
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 app = Flask(__name__)
 
@@ -15,6 +17,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 CORS(app)
 
 db = SQLAlchemy(app)
+
+# CRITICAL FIX: Enable foreign key constraints in SQLite
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    cursor = dbapi_conn.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 # Device Types
 DEVICE_TYPES = [
@@ -121,7 +130,7 @@ class Device(db.Model):
     networks = db.Column(db.String(200))  # Comma-separated: LAN,IoT,DMZ,GUEST or ALL
     interface_type = db.Column(db.String(200))  # Comma-separated interface types
     poe_powered = db.Column(db.Boolean, default=False)
-    poe_standards = db.Column(db.String(200))  # NEW: Comma-separated PoE standards
+    poe_standards = db.Column(db.String(200))  # Comma-separated PoE standards
     monitoring_enabled = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -145,7 +154,7 @@ class Device(db.Model):
             'networks': self.networks,
             'interface_type': self.interface_type,
             'poe_powered': self.poe_powered,
-            'poe_standards': self.poe_standards,  # NEW
+            'poe_standards': self.poe_standards,
             'monitoring_enabled': self.monitoring_enabled,
             'monitors': [m.to_dict() for m in self.monitors],
             'created_at': self.created_at.isoformat(),
@@ -202,12 +211,19 @@ def create_device():
         networks=data.get('networks'),
         interface_type=data.get('interface_type'),
         poe_powered=data.get('poe_powered', False),
-        poe_standards=data.get('poe_standards'),  # NEW
+        poe_standards=data.get('poe_standards'),
         monitoring_enabled=data.get('monitoring_enabled', True)
     )
-    db.session.add(device)
-    db.session.commit()
-    return jsonify(device.to_dict()), 201
+    try:
+        db.session.add(device)
+        db.session.commit()
+        return jsonify(device.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
+            return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
+        return jsonify({'error': f'Failed to create device: {error_msg}'}), 500
 
 @app.route('/api/devices/<int:device_id>', methods=['PUT'])
 def update_device(device_id):
@@ -216,7 +232,7 @@ def update_device(device_id):
     
     for key in ['name', 'device_type', 'ip_address', 'function', 
                 'vendor_id', 'model_id', 'location_id', 'serial_number', 
-                'networks', 'interface_type', 'poe_standards']:  # Added poe_standards
+                'networks', 'interface_type', 'poe_standards']:
         if key in data:
             setattr(device, key, data[key])
     
@@ -226,15 +242,30 @@ def update_device(device_id):
         device.monitoring_enabled = data['monitoring_enabled']
     
     device.updated_at = datetime.utcnow()
-    db.session.commit()
-    return jsonify(device.to_dict())
+    
+    try:
+        db.session.commit()
+        return jsonify(device.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
+            return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
+        return jsonify({'error': f'Failed to update device: {error_msg}'}), 500
 
 @app.route('/api/devices/<int:device_id>', methods=['DELETE'])
 def delete_device(device_id):
     device = Device.query.get_or_404(device_id)
-    db.session.delete(device)
-    db.session.commit()
-    return '', 204
+    try:
+        db.session.delete(device)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
+            return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
+        return jsonify({'error': f'Failed to delete device: {error_msg}'}), 500
 
 @app.route('/api/devices/<int:device_id>/monitors', methods=['POST'])
 def add_monitor(device_id):
@@ -717,7 +748,6 @@ def init_database():
                         conn.commit()
                     print("location_id column added successfully!")
                 
-                # NEW: Check for poe_standards column
                 if 'poe_standards' not in device_columns:
                     print("Adding poe_standards column to device table...")
                     with db.engine.connect() as conn:

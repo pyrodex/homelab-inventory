@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Edit2, Trash2, X, Check, Settings, List, Grid, Copy } from 'lucide-react';
+import { Plus, Server, Activity, Download, Edit2, Trash2, X, Check, Settings, List, Grid, Copy, AlertCircle } from 'lucide-react';
 
 const API_URL = '/api';
 
@@ -51,6 +51,27 @@ const POE_STANDARDS = [
   'Other'
 ];
 
+function ErrorAlert({ message, onClose }) {
+  if (!message) return null;
+  
+  return (
+    <div className="fixed top-4 right-4 z-50 max-w-md">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-red-800 mb-1">Error</h3>
+            <p className="text-sm text-red-700">{message}</p>
+          </div>
+          <button onClick={onClose} className="text-red-400 hover:text-red-600">
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [devices, setDevices] = useState([]);
   const [stats, setStats] = useState(null);
@@ -62,6 +83,7 @@ export default function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDevices();
@@ -111,32 +133,48 @@ export default function App() {
       }
     } catch (err) {
       console.error('Failed to export:', err);
-      alert('Failed to export configuration');
+      setError('Failed to export configuration');
     }
   };
 
   const toggleMonitoring = async (device) => {
     try {
-      await fetch(`${API_URL}/devices/${device.id}`, {
+      const res = await fetch(`${API_URL}/devices/${device.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...device, monitoring_enabled: !device.monitoring_enabled })
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        setError(errorData.error || 'Failed to toggle monitoring');
+        return;
+      }
+      
       fetchDevices();
       fetchStats();
     } catch (err) {
       console.error('Failed to toggle monitoring:', err);
+      setError('Failed to toggle monitoring');
     }
   };
 
   const deleteDevice = async (id) => {
     if (!window.confirm('Are you sure you want to delete this device?')) return;
     try {
-      await fetch(`${API_URL}/devices/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_URL}/devices/${id}`, { method: 'DELETE' });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        setError(errorData.error || 'Failed to delete device');
+        return;
+      }
+      
       fetchDevices();
       fetchStats();
     } catch (err) {
       console.error('Failed to delete device:', err);
+      setError('Failed to delete device');
     }
   };
 
@@ -153,6 +191,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <ErrorAlert message={error} onClose={() => setError(null)} />
+      
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex justify-between items-center">
@@ -253,8 +293,15 @@ export default function App() {
         )}
       </div>
 
-      {(showAddModal || editingDevice || cloningDevice) && <DeviceModal device={editingDevice || cloningDevice} onClose={() => { setShowAddModal(false); setEditingDevice(null); setCloningDevice(null); }} onSave={() => { fetchDevices(); fetchStats(); setShowAddModal(false); setEditingDevice(null); setCloningDevice(null); }} />}
-      {showAdminModal && <AdminModal onClose={() => setShowAdminModal(false)} />}
+      {(showAddModal || editingDevice || cloningDevice) && (
+        <DeviceModal 
+          device={editingDevice || cloningDevice} 
+          onClose={() => { setShowAddModal(false); setEditingDevice(null); setCloningDevice(null); }} 
+          onSave={() => { fetchDevices(); fetchStats(); setShowAddModal(false); setEditingDevice(null); setCloningDevice(null); }}
+          onError={setError}
+        />
+      )}
+      {showAdminModal && <AdminModal onClose={() => setShowAdminModal(false)} onError={setError} />}
     </div>
   );
 }
@@ -395,7 +442,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
   );
 }
 
-function DeviceModal({ device, onClose, onSave }) {
+function DeviceModal({ device, onClose, onSave, onError }) {
   const [formData, setFormData] = useState(device || {
     name: '', device_type: 'linux_server_physical', ip_address: '', function: '',
     vendor_id: '', model_id: '', location_id: '', serial_number: '', networks: 'LAN',
@@ -454,7 +501,7 @@ function DeviceModal({ device, onClose, onSave }) {
     if (!formData.serial_number?.trim()) missingFields.push('Serial Number');
     
     if (missingFields.length > 0) { 
-      alert(`The following required fields are missing:\n\n${missingFields.join('\n')}`); 
+      onError(`The following required fields are missing:\n\n${missingFields.join('\n')}`);
       return; 
     }
     
@@ -478,6 +525,13 @@ function DeviceModal({ device, onClose, onSave }) {
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify(saveData) 
       });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        onError(errorData.error || 'Failed to save device');
+        return;
+      }
+      
       const savedDevice = await res.json();
       
       if (isEdit) {
@@ -513,13 +567,13 @@ function DeviceModal({ device, onClose, onSave }) {
       onSave();
     } catch (err) { 
       console.error(err); 
-      alert('Failed to save device'); 
+      onError('Failed to save device');
     }
   };
 
   const addMonitor = () => {
     const existingMonitor = monitors.find(m => m.monitor_type === newMonitor.monitor_type);
-    if (existingMonitor) { alert(`A ${MONITOR_TYPES.find(t => t.value === newMonitor.monitor_type)?.label || newMonitor.monitor_type} monitor is already added to this device.`); return; }
+    if (existingMonitor) { onError(`A ${MONITOR_TYPES.find(t => t.value === newMonitor.monitor_type)?.label || newMonitor.monitor_type} monitor is already added to this device.`); return; }
     setMonitors([...monitors, { ...newMonitor, id: null }]);
     setNewMonitor({ monitor_type: 'node_exporter', port: 9100, enabled: true });
   };
@@ -575,7 +629,7 @@ function DeviceModal({ device, onClose, onSave }) {
   );
 }
 
-function AdminModal({ onClose }) {
+function AdminModal({ onClose, onError }) {
   const [activeTab, setActiveTab] = useState('vendors');
   const [vendors, setVendors] = useState([]);
   const [models, setModels] = useState([]);
@@ -613,14 +667,14 @@ function AdminModal({ onClose }) {
     if (!newVendorName.trim()) return;
     try {
       const res = await fetch(`${API_URL}/vendors`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newVendorName.trim() }) });
-      if (res.ok) { setNewVendorName(''); fetchVendors(); } else { const err = await res.json(); alert(err.error || 'Failed to add vendor'); }
-    } catch (err) { console.error(err); alert('Failed to add vendor'); }
+      if (res.ok) { setNewVendorName(''); fetchVendors(); } else { const err = await res.json(); onError(err.error || 'Failed to add vendor'); }
+    } catch (err) { console.error(err); onError('Failed to add vendor'); }
   };
 
   const updateVendor = async (id, name) => {
     try {
       const res = await fetch(`${API_URL}/vendors/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-      if (res.ok) { setEditingVendor(null); fetchVendors(); } else { const err = await res.json(); alert(err.error || 'Failed to update vendor'); }
+      if (res.ok) { setEditingVendor(null); fetchVendors(); } else { const err = await res.json(); onError(err.error || 'Failed to update vendor'); }
     } catch (err) { console.error(err); }
   };
 
@@ -628,7 +682,7 @@ function AdminModal({ onClose }) {
     if (!window.confirm('Are you sure you want to delete this vendor?')) return;
     try {
       const res = await fetch(`${API_URL}/vendors/${id}`, { method: 'DELETE' });
-      if (res.ok) { fetchVendors(); fetchModels(); } else { const err = await res.json(); alert(err.error || 'Failed to delete vendor'); }
+      if (res.ok) { fetchVendors(); fetchModels(); } else { const err = await res.json(); onError(err.error || 'Failed to delete vendor'); }
     } catch (err) { console.error(err); }
   };
 
@@ -636,14 +690,14 @@ function AdminModal({ onClose }) {
     if (!newModelName.trim() || !selectedVendorForModel) return;
     try {
       const res = await fetch(`${API_URL}/models`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newModelName.trim(), vendor_id: parseInt(selectedVendorForModel) }) });
-      if (res.ok) { setNewModelName(''); setSelectedVendorForModel(''); fetchModels(); } else { const err = await res.json(); alert(err.error || 'Failed to add model'); }
-    } catch (err) { console.error(err); alert('Failed to add model'); }
+      if (res.ok) { setNewModelName(''); setSelectedVendorForModel(''); fetchModels(); } else { const err = await res.json(); onError(err.error || 'Failed to add model'); }
+    } catch (err) { console.error(err); onError('Failed to add model'); }
   };
 
   const updateModel = async (id, name, vendorId) => {
     try {
       const res = await fetch(`${API_URL}/models/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, vendor_id: vendorId }) });
-      if (res.ok) { setEditingModel(null); fetchModels(); } else { const err = await res.json(); alert(err.error || 'Failed to update model'); }
+      if (res.ok) { setEditingModel(null); fetchModels(); } else { const err = await res.json(); onError(err.error || 'Failed to update model'); }
     } catch (err) { console.error(err); }
   };
 
@@ -651,7 +705,7 @@ function AdminModal({ onClose }) {
     if (!window.confirm('Are you sure you want to delete this model?')) return;
     try {
       const res = await fetch(`${API_URL}/models/${id}`, { method: 'DELETE' });
-      if (res.ok) { fetchModels(); } else { const err = await res.json(); alert(err.error || 'Failed to delete model'); }
+      if (res.ok) { fetchModels(); } else { const err = await res.json(); onError(err.error || 'Failed to delete model'); }
     } catch (err) { console.error(err); }
   };
 
@@ -659,14 +713,14 @@ function AdminModal({ onClose }) {
     if (!newLocationName.trim()) return;
     try {
       const res = await fetch(`${API_URL}/locations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newLocationName.trim() }) });
-      if (res.ok) { setNewLocationName(''); fetchLocations(); } else { const err = await res.json(); alert(err.error || 'Failed to add location'); }
-    } catch (err) { console.error(err); alert('Failed to add location'); }
+      if (res.ok) { setNewLocationName(''); fetchLocations(); } else { const err = await res.json(); onError(err.error || 'Failed to add location'); }
+    } catch (err) { console.error(err); onError('Failed to add location'); }
   };
 
   const updateLocation = async (id, name) => {
     try {
       const res = await fetch(`${API_URL}/locations/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) });
-      if (res.ok) { setEditingLocation(null); fetchLocations(); } else { const err = await res.json(); alert(err.error || 'Failed to update location'); }
+      if (res.ok) { setEditingLocation(null); fetchLocations(); } else { const err = await res.json(); onError(err.error || 'Failed to update location'); }
     } catch (err) { console.error(err); }
   };
 
@@ -674,7 +728,7 @@ function AdminModal({ onClose }) {
     if (!window.confirm('Are you sure you want to delete this location?')) return;
     try {
       const res = await fetch(`${API_URL}/locations/${id}`, { method: 'DELETE' });
-      if (res.ok) { fetchLocations(); } else { const err = await res.json(); alert(err.error || 'Failed to delete location'); }
+      if (res.ok) { fetchLocations(); } else { const err = await res.json(); onError(err.error || 'Failed to delete location'); }
     } catch (err) { console.error(err); }
   };
 
