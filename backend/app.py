@@ -9,6 +9,9 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import logging
 
+app = Flask(__name__)
+
+
 logging.basicConfig(level=logging.INFO)
 
 # Use environment variable for database path, fallback to current directory
