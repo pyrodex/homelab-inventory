@@ -252,7 +252,8 @@ def update_device(device_id):
         error_msg = str(e)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
             return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
-        return jsonify({'error': f'Failed to update device: {error_msg}'}), 500
+        logging.error(f"Error updating device {device_id}: {error_msg}", exc_info=True)
+        return jsonify({'error': 'Failed to update device due to an internal error.'}), 500
 
 @app.route('/api/devices/<int:device_id>', methods=['DELETE'])
 def delete_device(device_id):
