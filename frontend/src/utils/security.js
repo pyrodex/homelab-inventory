@@ -9,7 +9,13 @@ export const sanitizeString = (input) => {
   if (typeof input !== 'string') return '';
   
   // Remove any HTML tags
-  const withoutTags = input.replace(/<[^>]*>/g, '');
+  // Remove any HTML tags, repeat until no tags remain (see CodeQL multi-char sanitization issue)
+  let withoutTags = input;
+  let prev;
+  do {
+    prev = withoutTags;
+    withoutTags = withoutTags.replace(/<[^>]*>/g, '');
+  } while (withoutTags !== prev);
   
   // Escape special characters
   const div = document.createElement('div');
