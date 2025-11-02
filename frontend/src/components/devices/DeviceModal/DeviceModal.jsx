@@ -220,19 +220,12 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     }
   };
 
+  // NEW CODE - Allows duplicates
   const addMonitor = () => {
-    const existingMonitor = monitors.find(m => m.monitor_type === newMonitor.monitor_type);
-    
-    if (existingMonitor) {
-      const monitorLabel = MONITOR_TYPES.find(t => t.value === newMonitor.monitor_type)?.label || newMonitor.monitor_type;
-      onError(`A ${monitorLabel} monitor is already added to this device.`);
-      return;
-    }
-    
+  // Allow multiple monitors of the same type
     setMonitors([...monitors, { ...newMonitor, id: null }]);
     setNewMonitor({ monitor_type: 'node_exporter', port: 9100, enabled: true });
   };
-
   const removeMonitor = (index) => {
     setMonitors(monitors.filter((_, i) => i !== index));
   };
