@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from datetime import datetime
 import yaml
 import io
@@ -8,9 +10,13 @@ import os
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import logging
+from marshmallow import ValidationError as MarshmallowValidationError
+
+from validators import (
+    DeviceSchema, MonitorSchema, VendorSchema, ModelSchema, LocationSchema
+)
 
 app = Flask(__name__)
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,7 +24,37 @@ logging.basicConfig(level=logging.INFO)
 db_path = os.environ.get('DATABASE_PATH', 'homelab.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-CORS(app)
+
+# CORS Configuration - restrict to allowed origins
+allowed_origins = os.environ.get('CORS_ORIGINS', '*').split(',')
+if '*' in allowed_origins:
+    # Development mode - allow all origins
+    CORS(app)
+else:
+    # Production mode - restrict to specific origins
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": allowed_origins,
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+
+# Rate Limiting Configuration
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per hour", "50 per minute"],
+    storage_uri="memory://"  # Use in-memory storage (consider Redis for production)
+)
+
+# Rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({
+        'error': 'Rate limit exceeded',
+        'message': f'Too many requests. Please try again later. Limit: {e.description}'
+    }), 429
 
 db = SQLAlchemy(app)
 
@@ -201,22 +237,36 @@ def get_device(device_id):
     return jsonify(device.to_dict())
 
 @app.route('/api/devices', methods=['POST'])
+@limiter.limit("20 per minute")
 def create_device():
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
     data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input
+    schema = DeviceSchema()
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
     device = Device(
-        name=data['name'],
-        device_type=data['device_type'],
-        ip_address=data.get('ip_address'),
-        function=data.get('function'),
-        vendor_id=data.get('vendor_id'),
-        model_id=data.get('model_id'),
-        location_id=data.get('location_id'),
-        serial_number=data.get('serial_number'),
-        networks=data.get('networks'),
-        interface_type=data.get('interface_type'),
-        poe_powered=data.get('poe_powered', False),
-        poe_standards=data.get('poe_standards'),
-        monitoring_enabled=data.get('monitoring_enabled', True)
+        name=validated_data['name'],
+        device_type=validated_data['device_type'],
+        ip_address=validated_data.get('ip_address'),
+        function=validated_data.get('function'),
+        vendor_id=validated_data.get('vendor_id'),
+        model_id=validated_data.get('model_id'),
+        location_id=validated_data.get('location_id'),
+        serial_number=validated_data.get('serial_number'),
+        networks=validated_data.get('networks'),
+        interface_type=validated_data.get('interface_type'),
+        poe_powered=validated_data.get('poe_powered', False),
+        poe_standards=validated_data.get('poe_standards'),
+        monitoring_enabled=validated_data.get('monitoring_enabled', True)
     )
     try:
         db.session.add(device)
@@ -231,20 +281,34 @@ def create_device():
         return jsonify({'error': 'Failed to create device due to an internal error.'}), 500
 
 @app.route('/api/devices/<int:device_id>', methods=['PUT'])
+@limiter.limit("20 per minute")
 def update_device(device_id):
     device = Device.query.get_or_404(device_id)
+    
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
     data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input (partial validation for updates)
+    schema = DeviceSchema(partial=True)
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     for key in ['name', 'device_type', 'ip_address', 'function', 
                 'vendor_id', 'model_id', 'location_id', 'serial_number', 
                 'networks', 'interface_type', 'poe_standards']:
-        if key in data:
-            setattr(device, key, data[key])
+        if key in validated_data:
+            setattr(device, key, validated_data[key])
     
-    if 'poe_powered' in data:
-        device.poe_powered = data['poe_powered']
-    if 'monitoring_enabled' in data:
-        device.monitoring_enabled = data['monitoring_enabled']
+    if 'poe_powered' in validated_data:
+        device.poe_powered = validated_data['poe_powered']
+    if 'monitoring_enabled' in validated_data:
+        device.monitoring_enabled = validated_data['monitoring_enabled']
     
     device.updated_at = datetime.utcnow()
     
@@ -260,6 +324,7 @@ def update_device(device_id):
         return jsonify({'error': 'Failed to update device due to an internal error.'}), 500
 
 @app.route('/api/devices/<int:device_id>', methods=['DELETE'])
+@limiter.limit("20 per minute")
 def delete_device(device_id):
     device = Device.query.get_or_404(device_id)
     try:
@@ -268,49 +333,97 @@ def delete_device(device_id):
         return '', 204
     except Exception as e:
         db.session.rollback()
+        error_msg = str(e)  # Fixed: error_msg now assigned before use
         logging.error(f"Error deleting device {device_id}: {error_msg}", exc_info=True)
-        error_msg = str(e)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
             return jsonify({'error': 'Database is read-only. Please check file permissions.'}), 500
         return jsonify({'error': 'Failed to delete device due to an internal error.'}), 500
 
 @app.route('/api/devices/<int:device_id>/monitors', methods=['POST'])
+@limiter.limit("30 per minute")
 def add_monitor(device_id):
     device = Device.query.get_or_404(device_id)
+    
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
     data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input
+    schema = MonitorSchema()
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     monitor = Monitor(
         device_id=device_id,
-        monitor_type=data['monitor_type'],
-        endpoint=data.get('endpoint'),
-        port=data.get('port'),
-        enabled=data.get('enabled', True),
-        notes=data.get('notes')
+        monitor_type=validated_data['monitor_type'],
+        endpoint=validated_data.get('endpoint'),
+        port=validated_data.get('port'),
+        enabled=validated_data.get('enabled', True),
+        notes=validated_data.get('notes')
     )
-    db.session.add(monitor)
-    db.session.commit()
-    return jsonify(monitor.to_dict()), 201
+    try:
+        db.session.add(monitor)
+        db.session.commit()
+        return jsonify(monitor.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to create monitor: {error_msg}")
+        return jsonify({'error': 'Failed to create monitor due to an internal error.'}), 500
 
 @app.route('/api/monitors/<int:monitor_id>', methods=['PUT'])
+@limiter.limit("30 per minute")
 def update_monitor(monitor_id):
     monitor = Monitor.query.get_or_404(monitor_id)
+    
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
     data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input (partial validation for updates)
+    schema = MonitorSchema(partial=True)
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     for key in ['monitor_type', 'endpoint', 'port', 'enabled', 'notes']:
-        if key in data:
-            setattr(monitor, key, data[key])
+        if key in validated_data:
+            setattr(monitor, key, validated_data[key])
     
-    db.session.commit()
-    return jsonify(monitor.to_dict())
+    try:
+        db.session.commit()
+        return jsonify(monitor.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to update monitor: {error_msg}")
+        return jsonify({'error': 'Failed to update monitor due to an internal error.'}), 500
 
 @app.route('/api/monitors/<int:monitor_id>', methods=['DELETE'])
+@limiter.limit("30 per minute")
 def delete_monitor(monitor_id):
     monitor = Monitor.query.get_or_404(monitor_id)
-    db.session.delete(monitor)
-    db.session.commit()
-    return '', 204
+    try:
+        db.session.delete(monitor)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to delete monitor: {error_msg}")
+        return jsonify({'error': 'Failed to delete monitor due to an internal error.'}), 500
 
 @app.route('/api/prometheus/export', methods=['GET'])
+@limiter.limit("10 per minute")
 def export_prometheus_config():
     import tempfile
     import shutil
@@ -571,44 +684,88 @@ def get_location(location_id):
     return jsonify(location.to_dict())
 
 @app.route('/api/locations', methods=['POST'])
+@limiter.limit("30 per minute")
 def create_location():
-    data = request.json
-    if not data.get('name'):
-        return jsonify({'error': 'Location name is required'}), 400
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
     
-    existing = Location.query.filter_by(name=data['name']).first()
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input
+    schema = LocationSchema()
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    existing = Location.query.filter_by(name=validated_data['name']).first()
     if existing:
         return jsonify({'error': 'Location already exists'}), 400
     
-    location = Location(name=data['name'])
-    db.session.add(location)
-    db.session.commit()
-    return jsonify(location.to_dict()), 201
+    location = Location(name=validated_data['name'])
+    try:
+        db.session.add(location)
+        db.session.commit()
+        return jsonify(location.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to create location: {error_msg}")
+        return jsonify({'error': 'Failed to create location due to an internal error.'}), 500
 
 @app.route('/api/locations/<int:location_id>', methods=['PUT'])
+@limiter.limit("30 per minute")
 def update_location(location_id):
     location = Location.query.get_or_404(location_id)
-    data = request.json
     
-    if 'name' in data:
-        existing = Location.query.filter_by(name=data['name']).first()
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input (partial validation for updates)
+    schema = LocationSchema(partial=True)
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    if 'name' in validated_data:
+        existing = Location.query.filter_by(name=validated_data['name']).first()
         if existing and existing.id != location_id:
             return jsonify({'error': 'Location name already exists'}), 400
-        location.name = data['name']
+        location.name = validated_data['name']
     
-    db.session.commit()
-    return jsonify(location.to_dict())
+    try:
+        db.session.commit()
+        return jsonify(location.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to update location: {error_msg}")
+        return jsonify({'error': 'Failed to update location due to an internal error.'}), 500
 
 @app.route('/api/locations/<int:location_id>', methods=['DELETE'])
+@limiter.limit("30 per minute")
 def delete_location(location_id):
     location = Location.query.get_or_404(location_id)
     
     if len(location.devices) > 0:
         return jsonify({'error': f'Cannot delete location. {len(location.devices)} device(s) are using this location'}), 400
     
-    db.session.delete(location)
-    db.session.commit()
-    return '', 204
+    try:
+        db.session.delete(location)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to delete location: {error_msg}")
+        return jsonify({'error': 'Failed to delete location due to an internal error.'}), 500
 
 # Vendor routes
 @app.route('/api/vendors', methods=['GET'])
@@ -622,44 +779,88 @@ def get_vendor(vendor_id):
     return jsonify(vendor.to_dict())
 
 @app.route('/api/vendors', methods=['POST'])
+@limiter.limit("30 per minute")
 def create_vendor():
-    data = request.json
-    if not data.get('name'):
-        return jsonify({'error': 'Vendor name is required'}), 400
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
     
-    existing = Vendor.query.filter_by(name=data['name']).first()
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input
+    schema = VendorSchema()
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    existing = Vendor.query.filter_by(name=validated_data['name']).first()
     if existing:
         return jsonify({'error': 'Vendor already exists'}), 400
     
-    vendor = Vendor(name=data['name'])
-    db.session.add(vendor)
-    db.session.commit()
-    return jsonify(vendor.to_dict()), 201
+    vendor = Vendor(name=validated_data['name'])
+    try:
+        db.session.add(vendor)
+        db.session.commit()
+        return jsonify(vendor.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to create vendor: {error_msg}")
+        return jsonify({'error': 'Failed to create vendor due to an internal error.'}), 500
 
 @app.route('/api/vendors/<int:vendor_id>', methods=['PUT'])
+@limiter.limit("30 per minute")
 def update_vendor(vendor_id):
     vendor = Vendor.query.get_or_404(vendor_id)
-    data = request.json
     
-    if 'name' in data:
-        existing = Vendor.query.filter_by(name=data['name']).first()
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input (partial validation for updates)
+    schema = VendorSchema(partial=True)
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    if 'name' in validated_data:
+        existing = Vendor.query.filter_by(name=validated_data['name']).first()
         if existing and existing.id != vendor_id:
             return jsonify({'error': 'Vendor name already exists'}), 400
-        vendor.name = data['name']
+        vendor.name = validated_data['name']
     
-    db.session.commit()
-    return jsonify(vendor.to_dict())
+    try:
+        db.session.commit()
+        return jsonify(vendor.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to update vendor: {error_msg}")
+        return jsonify({'error': 'Failed to update vendor due to an internal error.'}), 500
 
 @app.route('/api/vendors/<int:vendor_id>', methods=['DELETE'])
+@limiter.limit("30 per minute")
 def delete_vendor(vendor_id):
     vendor = Vendor.query.get_or_404(vendor_id)
     
     if len(vendor.devices) > 0:
         return jsonify({'error': f'Cannot delete vendor. {len(vendor.devices)} device(s) are using this vendor'}), 400
     
-    db.session.delete(vendor)
-    db.session.commit()
-    return '', 204
+    try:
+        db.session.delete(vendor)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to delete vendor: {error_msg}")
+        return jsonify({'error': 'Failed to delete vendor due to an internal error.'}), 500
 
 # Model routes
 @app.route('/api/models', methods=['GET'])
@@ -677,51 +878,93 @@ def get_model(model_id):
     return jsonify(model.to_dict())
 
 @app.route('/api/models', methods=['POST'])
+@limiter.limit("30 per minute")
 def create_model():
-    data = request.json
-    if not data.get('name'):
-        return jsonify({'error': 'Model name is required'}), 400
-    if not data.get('vendor_id'):
-        return jsonify({'error': 'Vendor is required'}), 400
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
     
-    vendor = Vendor.query.get(data['vendor_id'])
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input
+    schema = ModelSchema()
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    vendor = Vendor.query.get(validated_data['vendor_id'])
     if not vendor:
         return jsonify({'error': 'Vendor not found'}), 404
     
     model = Model(
-        name=data['name'],
-        vendor_id=data['vendor_id']
+        name=validated_data['name'],
+        vendor_id=validated_data['vendor_id']
     )
-    db.session.add(model)
-    db.session.commit()
-    return jsonify(model.to_dict()), 201
+    try:
+        db.session.add(model)
+        db.session.commit()
+        return jsonify(model.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to create model: {error_msg}")
+        return jsonify({'error': 'Failed to create model due to an internal error.'}), 500
 
 @app.route('/api/models/<int:model_id>', methods=['PUT'])
+@limiter.limit("30 per minute")
 def update_model(model_id):
     model = Model.query.get_or_404(model_id)
-    data = request.json
     
-    if 'name' in data:
-        model.name = data['name']
-    if 'vendor_id' in data:
-        vendor = Vendor.query.get(data['vendor_id'])
+    if not request.is_json:
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+    
+    data = request.json
+    if not data:
+        return jsonify({'error': 'Request body is required'}), 400
+    
+    # Validate input (partial validation for updates)
+    schema = ModelSchema(partial=True)
+    try:
+        validated_data = schema.load(data)
+    except MarshmallowValidationError as err:
+        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+    
+    if 'name' in validated_data:
+        model.name = validated_data['name']
+    if 'vendor_id' in validated_data:
+        vendor = Vendor.query.get(validated_data['vendor_id'])
         if not vendor:
             return jsonify({'error': 'Vendor not found'}), 404
-        model.vendor_id = data['vendor_id']
+        model.vendor_id = validated_data['vendor_id']
     
-    db.session.commit()
-    return jsonify(model.to_dict())
+    try:
+        db.session.commit()
+        return jsonify(model.to_dict())
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to update model: {error_msg}")
+        return jsonify({'error': 'Failed to update model due to an internal error.'}), 500
 
 @app.route('/api/models/<int:model_id>', methods=['DELETE'])
+@limiter.limit("30 per minute")
 def delete_model(model_id):
     model = Model.query.get_or_404(model_id)
     
     if len(model.devices) > 0:
         return jsonify({'error': f'Cannot delete model. {len(model.devices)} device(s) are using this model'}), 400
     
-    db.session.delete(model)
-    db.session.commit()
-    return '', 204
+    try:
+        db.session.delete(model)
+        db.session.commit()
+        return '', 204
+    except Exception as e:
+        db.session.rollback()
+        error_msg = str(e)
+        logging.error(f"Failed to delete model: {error_msg}")
+        return jsonify({'error': 'Failed to delete model due to an internal error.'}), 500
 
 # Initialize database
 def init_database():

@@ -212,6 +212,7 @@ For local development:
 | `FLASK_ENV` | Flask environment (development/production) | `production` |
 | `DATABASE_PATH` | Path to SQLite database file | `/app/data/homelab.db` |
 | `PROMETHEUS_EXPORT_PATH` | Directory for Prometheus config exports | `/app/prometheus_targets` |
+| `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
 
 #### Docker Compose
 
@@ -473,13 +474,38 @@ Ensure volumes are properly mounted:
 - `./data:/app/data` - Database storage
 - `./targets:/app/prometheus_targets` - Prometheus export directory
 
-## 🔒 Security Considerations
+## 🔒 Security Features
+
+### Implemented Security Measures
+
+- **Input Validation & Sanitization**: All API endpoints use Marshmallow schemas to validate and sanitize input data
+  - IP addresses and hostnames are validated
+  - Port numbers are validated (1-65535)
+  - String fields are sanitized to prevent injection attacks
+  - Device types, monitor types, and other enums are validated against allowed values
+
+- **Rate Limiting**: Flask-Limiter is configured to prevent abuse
+  - Default limits: 200 requests/hour, 50 requests/minute per IP
+  - Write operations (POST/PUT/DELETE): 20-30 requests/minute
+  - Prometheus export: 10 requests/minute
+  - Rate limit errors return HTTP 429 with descriptive messages
+
+- **CORS Configuration**: Configurable CORS origins via environment variable
+  - Development: Set `CORS_ORIGINS=*` to allow all origins
+  - Production: Set `CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com` to restrict
+
+- **Error Handling**: Comprehensive error handling with proper HTTP status codes
+  - Validation errors return 400 with detailed messages
+  - Database errors are logged but don't expose sensitive information
+  - Rate limit errors return 429
+
+### Security Recommendations
 
 - **Database**: SQLite database should be stored in a secure location with proper file permissions
-- **Network**: Consider using a reverse proxy (nginx, Traefik) with SSL/TLS for production
-- **Authentication**: Currently no authentication is implemented - consider adding authentication for production use
-- **CORS**: CORS is enabled for development - restrict origins in production
-- **Input Validation**: Always validate and sanitize user input
+- **Network**: Use a reverse proxy (nginx, Traefik) with SSL/TLS for production
+- **Authentication**: Consider adding authentication for production use (not currently implemented)
+- **Rate Limiting Storage**: For production with multiple instances, use Redis instead of in-memory storage
+- **Secrets Management**: Use environment variables or secrets manager for sensitive configuration
 
 ## 🤝 Contributing
 

@@ -11,6 +11,7 @@ services:
       - FLASK_ENV=production
       - DATABASE_PATH=/app/data/homelab.db
       - PROMETHEUS_EXPORT_PATH=/app/prometheus_targets
+      - CORS_ORIGINS=*
     restart: unless-stopped
     networks:
       - homelab-network
