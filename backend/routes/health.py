@@ -1,8 +1,9 @@
 """
-Health check and monitoring routes
+Health check and monitoring routes 
 """
 from flask import Blueprint, jsonify
 from datetime import datetime
+from sqlalchemy import text
 import os
 
 from models import db, Device
@@ -27,7 +28,7 @@ def health_check():
     """Basic health check endpoint"""
     try:
         # Test database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         
         return jsonify({
             'status': 'healthy',
@@ -47,7 +48,7 @@ def detailed_health():
     """Detailed health check with system metrics"""
     try:
         # Test database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         db_healthy = True
         db_error = None
     except Exception as e:
