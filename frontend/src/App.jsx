@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
 import DeviceList from './components/devices/DeviceList/DeviceList';
 import DeviceModal from './components/devices/DeviceModal/DeviceModal';
 import AdminModal from './components/admin/AdminModal/AdminModal';
+import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOperationsModal';
 
 // Services
 import { deviceApi, statsApi, prometheusApi } from './services/api';
@@ -26,9 +27,11 @@ function App() {
   const [editingDevice, setEditingDevice] = useState(null);
   const [cloningDevice, setCloningDevice] = useState(null);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Load data on mount and when filter changes
   useEffect(() => {
@@ -162,6 +165,15 @@ function App() {
                 <Download size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
                 <span className="hidden md:inline truncate">Download Config</span>
                 <span className="md:hidden truncate">Download</span>
+              </button>
+              <button 
+                onClick={() => setShowBulkModal(true)} 
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-purple-600 text-white rounded-lg active:bg-purple-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
+                aria-label="Bulk operations"
+              >
+                <FileDown size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
+                <span className="hidden md:inline truncate">Bulk Ops</span>
+                <span className="md:hidden truncate">Bulk</span>
               </button>
               <button 
                 onClick={() => setShowAddModal(true)} 
@@ -312,6 +324,43 @@ function App() {
           onClose={() => setShowAdminModal(false)} 
           onError={setError} 
         />
+      )}
+      
+      {showBulkModal && (
+        <BulkOperationsModal
+          onClose={() => {
+            setShowBulkModal(false);
+            fetchDevices();
+            fetchStats();
+          }}
+          onSuccess={(message) => {
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(null), 5000);
+            fetchDevices();
+            fetchStats();
+          }}
+          onError={setError}
+        />
+      )}
+      
+      {successMessage && (
+        <div className="fixed top-4 left-4 right-4 md:right-4 md:left-auto z-50 max-w-md md:max-w-md mx-auto md:mx-0">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <Check className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-green-700 break-words">{successMessage}</p>
+              </div>
+              <button 
+                onClick={() => setSuccessMessage(null)} 
+                className="text-green-400 active:text-green-600 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                aria-label="Close success message"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

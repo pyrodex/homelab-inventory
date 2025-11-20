@@ -152,3 +152,72 @@ export const prometheusApi = {
     return blob;
   },
 };
+
+// Bulk operations API calls
+export const bulkApi = {
+  importDevices: async (devices) => {
+    return apiRequest('/bulk/devices/import', {
+      method: 'POST',
+      body: JSON.stringify(devices),
+    });
+  },
+  
+  importDevicesCSV: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await fetch(`${API_URL}/bulk/devices/import`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  },
+  
+  exportDevices: async (format = 'json', type = null) => {
+    const url = `/bulk/devices/export?format=${format}${type ? `&type=${encodeURIComponent(type)}` : ''}`;
+    const response = await apiRequest(url);
+    
+    if (format === 'csv') {
+      const blob = await response.blob();
+      return blob;
+    }
+    
+    return response;
+  },
+  
+  deleteDevices: async (deviceIds) => {
+    return apiRequest('/bulk/devices/delete', {
+      method: 'POST',
+      body: JSON.stringify({ device_ids: deviceIds }),
+    });
+  },
+};
+
+// Advanced search API calls
+export const searchApi = {
+  advancedSearch: async (filters) => {
+    const params = new URLSearchParams();
+    if (filters.q) params.append('q', filters.q);
+    if (filters.type) params.append('type', filters.type);
+    if (filters.vendor_id) params.append('vendor_id', filters.vendor_id);
+    if (filters.model_id) params.append('model_id', filters.model_id);
+    if (filters.location_id) params.append('location_id', filters.location_id);
+    if (filters.monitoring_enabled !== undefined) params.append('monitoring_enabled', filters.monitoring_enabled);
+    if (filters.poe_powered !== undefined) params.append('poe_powered', filters.poe_powered);
+    if (filters.has_ip !== undefined) params.append('has_ip', filters.has_ip);
+    
+    return apiRequest(`/search/devices?${params.toString()}`);
+  },
+};
+
+// Health check API calls
+export const healthApi = {
+  check: () => apiRequest('/health'),
+  detailed: () => apiRequest('/health/detailed'),
+};

@@ -44,10 +44,15 @@ class Vendor(db.Model):
 class Model(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     devices = db.relationship('Device', backref='model_obj', lazy=True)
+    
+    # Composite unique constraint for vendor + model name
+    __table_args__ = (
+        db.UniqueConstraint('vendor_id', 'name', name='uq_vendor_model'),
+    )
 
     def to_dict(self):
         return {
@@ -62,23 +67,29 @@ class Model(db.Model):
 
 class Device(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    device_type = db.Column(db.String(50), nullable=False)
-    ip_address = db.Column(db.String(100))
-    function = db.Column(db.String(200))
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=True)
-    model_id = db.Column(db.Integer, db.ForeignKey('model.id'), nullable=True)
-    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True)
-    serial_number = db.Column(db.String(100))
+    name = db.Column(db.String(100), nullable=False, index=True)
+    device_type = db.Column(db.String(50), nullable=False, index=True)
+    ip_address = db.Column(db.String(100), index=True)
+    function = db.Column(db.String(200), index=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=True, index=True)
+    model_id = db.Column(db.Integer, db.ForeignKey('model.id'), nullable=True, index=True)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True, index=True)
+    serial_number = db.Column(db.String(100), index=True)
     networks = db.Column(db.String(200))  # Comma-separated: LAN,IoT,DMZ,GUEST or ALL
     interface_type = db.Column(db.String(200))  # Comma-separated interface types
-    poe_powered = db.Column(db.Boolean, default=False)
+    poe_powered = db.Column(db.Boolean, default=False, index=True)
     poe_standards = db.Column(db.String(200))  # Comma-separated PoE standards
-    monitoring_enabled = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    monitoring_enabled = db.Column(db.Boolean, default=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     monitors = db.relationship('Monitor', backref='device', lazy=True, cascade='all, delete-orphan')
+    
+    # Composite indexes for common query patterns
+    __table_args__ = (
+        db.Index('idx_device_type_monitoring', 'device_type', 'monitoring_enabled'),
+        db.Index('idx_vendor_model', 'vendor_id', 'model_id'),
+    )
 
     def to_dict(self):
         return {
@@ -107,11 +118,11 @@ class Device(db.Model):
 
 class Monitor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    device_id = db.Column(db.Integer, db.ForeignKey('device.id'), nullable=False)
-    monitor_type = db.Column(db.String(50), nullable=False)
+    device_id = db.Column(db.Integer, db.ForeignKey('device.id'), nullable=False, index=True)
+    monitor_type = db.Column(db.String(50), nullable=False, index=True)
     endpoint = db.Column(db.String(200))
-    port = db.Column(db.Integer)
-    enabled = db.Column(db.Boolean, default=True)
+    port = db.Column(db.Integer, index=True)
+    enabled = db.Column(db.Boolean, default=True, index=True)
     notes = db.Column(db.Text)
 
     def to_dict(self):

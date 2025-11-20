@@ -19,6 +19,9 @@ from routes.monitors import register_monitor_routes
 from routes.admin import register_admin_routes
 from routes.stats import register_stats_routes
 from routes.prometheus import register_prometheus_routes
+from routes.bulk import register_bulk_routes
+from routes.search import register_search_routes
+from routes.health import register_health_routes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -101,6 +104,9 @@ register_monitor_routes(app, limiter)
 register_admin_routes(app, limiter)
 register_stats_routes(app)
 register_prometheus_routes(app, limiter)
+register_bulk_routes(app, limiter)
+register_search_routes(app, limiter)
+register_health_routes(app, limiter)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
