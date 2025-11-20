@@ -53,11 +53,24 @@ def create_device():
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only/computed fields that shouldn't be in create requests
+    # These fields come from the database relationships and computed properties
+    readonly_fields = ['id', 'created_at', 'updated_at', 'vendor_name', 'model_name', 
+                      'location_name', 'monitors']
+    
+    # Only keep fields that are actually creatable
+    creatable_fields = ['name', 'device_type', 'ip_address', 'function', 'vendor_id', 
+                       'model_id', 'location_id', 'serial_number', 'networks', 
+                       'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
+    
+    filtered_data = {k: v for k, v in data.items() if k in creatable_fields}
+    
     # Validate input
     schema = DeviceSchema()
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
+        logging.warning(f"Validation error for device creation: {err.messages}. Filtered data: {filtered_data}")
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     device = Device(

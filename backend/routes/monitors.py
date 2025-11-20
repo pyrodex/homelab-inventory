@@ -35,11 +35,16 @@ def add_monitor(device_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only fields (id, device_id are not creatable)
+    creatable_fields = ['monitor_type', 'endpoint', 'port', 'enabled', 'notes']
+    filtered_data = {k: v for k, v in data.items() if k in creatable_fields}
+    
     # Validate input
     schema = MonitorSchema()
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
+        logging.warning(f"Validation error for monitor creation: {err.messages}")
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     monitor = Monitor(
