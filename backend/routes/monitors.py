@@ -73,11 +73,16 @@ def update_monitor(monitor_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only fields (id, device_id are not updatable)
+    updatable_fields = ['monitor_type', 'endpoint', 'port', 'enabled', 'notes']
+    filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    
     # Validate input (partial validation for updates)
     schema = MonitorSchema(partial=True)
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
+        logging.warning(f"Validation error for monitor {monitor_id} update: {err.messages}")
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     for key in ['monitor_type', 'endpoint', 'port', 'enabled', 'notes']:

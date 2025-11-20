@@ -100,21 +100,32 @@ def update_device(device_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only/computed fields that shouldn't be updated
+    # These fields come from the database relationships and computed properties
+    readonly_fields = ['id', 'created_at', 'updated_at', 'vendor_name', 'model_name', 
+                      'location_name', 'monitors']
+    
+    # Only keep fields that are actually updatable
+    updatable_fields = ['name', 'device_type', 'ip_address', 'function', 'vendor_id', 
+                       'model_id', 'location_id', 'serial_number', 'networks', 
+                       'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
+    
+    filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    
     # For partial updates, remove empty strings from required fields to avoid validation errors
-    # Empty strings will be handled by the schema's pre_load hook for optional fields
-    if isinstance(data, dict):
+    if isinstance(filtered_data, dict):
         # Remove empty strings for required fields in partial updates
         for key in ['name', 'device_type']:
-            if key in data and data[key] == '':
+            if key in filtered_data and filtered_data[key] == '':
                 # Keep existing value, don't update
-                data.pop(key)
+                filtered_data.pop(key)
     
     # Validate input (partial validation for updates)
     schema = DeviceSchema(partial=True)
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
-        logging.warning(f"Validation error for device {device_id} update: {err.messages}. Data: {data}")
+        logging.warning(f"Validation error for device {device_id} update: {err.messages}. Filtered data: {filtered_data}")
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
     for key in ['name', 'device_type', 'ip_address', 'function', 

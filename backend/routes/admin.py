@@ -89,10 +89,14 @@ def update_location(location_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only fields (id, created_at, device_count are not updatable)
+    updatable_fields = ['name']
+    filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    
     # Validate input (partial validation for updates)
     schema = LocationSchema(partial=True)
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
@@ -191,10 +195,14 @@ def update_vendor(vendor_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only fields (id, created_at, model_count, device_count are not updatable)
+    updatable_fields = ['name']
+    filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    
     # Validate input (partial validation for updates)
     schema = VendorSchema(partial=True)
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
@@ -300,10 +308,14 @@ def update_model(model_id):
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
     
+    # Filter out read-only fields (id, created_at, vendor_name, device_count are not updatable)
+    updatable_fields = ['name', 'vendor_id']
+    filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    
     # Validate input (partial validation for updates)
     schema = ModelSchema(partial=True)
     try:
-        validated_data = schema.load(data)
+        validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
         return jsonify({'error': 'Validation error', 'details': err.messages}), 400
     
