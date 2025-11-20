@@ -18,6 +18,7 @@ The backup script (`backend/scripts/backup_db.py`) creates timestamped SQLite da
 - `DATABASE_PATH`: Path to the database file (default: `/app/data/homelab.db`)
 - `BACKUP_DIRECTORY`: Directory for backups (default: `/app/data/backups`)
 - `BACKUP_RETENTION_DAYS`: Number of days to keep backups (default: `30`)
+- `BACKUP_SCHEDULE`: Cron schedule for automatic backups (default: `0 2 * * *` - daily at 2 AM)
 
 ### Manual Backup
 
@@ -33,22 +34,41 @@ python3 backend/scripts/backup_db.py
 
 ### Automated Scheduling
 
-#### Using Cron (Inside Container)
+#### Automatic Daily Backups (Default - Docker Compose)
 
-1. Add cron job to container:
+**Backups are automatically configured when using Docker Compose!** The container includes a cron daemon that runs daily backups automatically.
+
+Configure via environment variables in your `docker-compose.yaml`:
+
+```yaml
+services:
+  backend:
+    environment:
+      - BACKUP_DIRECTORY=/app/data/backups
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM (cron format)
+```
+
+**Cron Schedule Format:**
+- `0 2 * * *` - Daily at 2:00 AM (default)
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * 0` - Weekly on Sunday at midnight
+- `*/30 * * * *` - Every 30 minutes
+
+The backup runs automatically in the background. Check logs with:
+```bash
+docker compose logs backend | grep -i backup
+```
+
+#### Alternative: Manual Cron Setup (Inside Container)
+
+If you need to manually add a cron job:
 ```bash
 docker exec -it homelab-inventory-backend bash
 echo "0 2 * * * python3 /app/scripts/backup_db.py" | crontab -
 ```
 
-2. Or add to Dockerfile:
-```dockerfile
-RUN apt-get update && apt-get install -y cron && \
-    echo "0 2 * * * python3 /app/scripts/backup_db.py" | crontab -
-CMD cron && python app.py
-```
-
-#### Using Systemd Timer (Host System)
+#### Alternative: Using Systemd Timer (Host System)
 
 Create `/etc/systemd/system/homelab-backup.service`:
 ```ini
@@ -82,21 +102,9 @@ sudo systemctl enable homelab-backup.timer
 sudo systemctl start homelab-backup.timer
 ```
 
-#### Using Docker Compose with External Cron
+#### Alternative: External Cron Service (Not Needed)
 
-Add a cron service to your `docker-compose.yaml`:
-```yaml
-backup-cron:
-  image: homelab-inventory-backend
-  volumes:
-    - ./data:/app/data
-  command: >
-    sh -c "
-    echo '0 2 * * * python3 /app/scripts/backup_db.py' | crontab - &&
-    crond -f
-    "
-  restart: unless-stopped
-```
+**Note:** This is no longer necessary as backups are automatic. The main backend container handles backups internally via cron.
 
 ### Restoring from Backup
 
