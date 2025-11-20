@@ -11,7 +11,6 @@ function AdminModal({ onClose, onError }) {
   const [newModelName, setNewModelName] = useState('');
   const [newLocationName, setNewLocationName] = useState('');
   const [selectedVendorForModel, setSelectedVendorForModel] = useState('');
-  const [filterVendorForModels, setFilterVendorForModels] = useState('');
   const [editingVendor, setEditingVendor] = useState(null);
   const [editingModel, setEditingModel] = useState(null);
   const [editingLocation, setEditingLocation] = useState(null);
@@ -242,8 +241,6 @@ function AdminModal({ onClose, onError }) {
               setNewModelName={setNewModelName}
               selectedVendorForModel={selectedVendorForModel}
               setSelectedVendorForModel={setSelectedVendorForModel}
-              filterVendorForModels={filterVendorForModels}
-              setFilterVendorForModels={setFilterVendorForModels}
               editingModel={editingModel}
               setEditingModel={setEditingModel}
               addModel={addModel}
@@ -362,39 +359,46 @@ function ModelsTab({
   setNewModelName, 
   selectedVendorForModel, 
   setSelectedVendorForModel, 
-  filterVendorForModels,
-  setFilterVendorForModels,
   editingModel, 
   setEditingModel, 
   addModel, 
   updateModel, 
   deleteModel 
 }) {
-  // Filter models by selected vendor
-  const filteredModels = filterVendorForModels 
-    ? models.filter(model => model.vendor_id === parseInt(filterVendorForModels))
+  // Filter models by selected vendor (same dropdown used for both filtering and adding)
+  const filteredModels = selectedVendorForModel 
+    ? models.filter(model => model.vendor_id === parseInt(selectedVendorForModel))
     : models;
+
+  const handleVendorChange = (vendorId) => {
+    setSelectedVendorForModel(vendorId);
+  };
 
   return (
     <div>
       <div className="mb-6">
-        <h3 className="text-lg font-semibold mb-3">Add New Model</h3>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
+          <h3 className="text-lg font-semibold">Add New Model</h3>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-700 whitespace-nowrap">Vendor:</label>
+            <select 
+              value={selectedVendorForModel} 
+              onChange={(e) => handleVendorChange(e.target.value)} 
+              className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation min-h-[44px]"
+            >
+              <option value="">All Vendors</option>
+              {vendors.map(vendor => (
+                <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
         {vendors.length === 0 ? (
           <p className="text-amber-600 bg-amber-50 p-3 rounded-lg">
             Please add at least one vendor first before adding models.
           </p>
         ) : (
           <div className="flex flex-col md:flex-row gap-2">
-            <select 
-              value={selectedVendorForModel} 
-              onChange={(e) => setSelectedVendorForModel(e.target.value)} 
-              className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
-            >
-              <option value="">Select Vendor...</option>
-              {vendors.map(vendor => (
-                <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-              ))}
-            </select>
             <input 
               type="text" 
               value={newModelName} 
@@ -415,24 +419,9 @@ function ModelsTab({
       </div>
       
       <div>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-          <h3 className="text-lg font-semibold">
-            Existing Models ({filteredModels.length}{filterVendorForModels ? ` of ${models.length}` : ''})
-          </h3>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700 whitespace-nowrap">Filter by Vendor:</label>
-            <select 
-              value={filterVendorForModels} 
-              onChange={(e) => setFilterVendorForModels(e.target.value)} 
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation min-h-[44px]"
-            >
-              <option value="">All Vendors</option>
-              {vendors.map(vendor => (
-                <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <h3 className="text-lg font-semibold mb-3">
+          Existing Models ({filteredModels.length}{selectedVendorForModel ? ` of ${models.length}` : ''})
+        </h3>
         <div className="space-y-2">
           {filteredModels.map(model => (
             <div key={model.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
