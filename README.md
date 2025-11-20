@@ -295,9 +295,11 @@ The application uses SQLite by default, stored in the `data/` directory. The dat
 - Automated backup script included (`backend/scripts/backup_db.py`)
 - Creates timestamped backups with automatic cleanup
 - Configurable retention period (default: 30 days)
-- See [BACKUP_README.md](BACKUP_README.md) for detailed backup and restore instructions
+- Automatic daily backups via cron (configured in Docker container)
+- Uses SQLite's native backup API for consistency
 - Manual backup: `docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py`
 - Backups stored in `data/backups/` directory
+- See [Database Backup & Restore](#-database-backup--restore) section below for detailed instructions
 
 **Environment Validation:**
 - Application validates environment variables and paths on startup
@@ -687,25 +689,178 @@ The Docker Compose configuration includes health checks for both services:
    ./build.sh
    ```
 
-### Backup
+## 💾 Database Backup & Restore
 
-**Automated Backups:**
-The application includes an automated backup script. See [BACKUP_README.md](BACKUP_README.md) for complete backup and restore instructions.
+The Homelab Inventory application includes comprehensive automated database backup functionality to protect your data.
 
-**Manual Backup:**
+> **Note:** For a standalone backup reference document, see [BACKUP_README.md](BACKUP_README.md).
+
+### Backup Features
+
+- **Timestamped Backups**: Each backup includes a timestamp in the filename (e.g., `homelab_backup_20241120_143022.db`)
+- **Automatic Cleanup**: Removes backups older than the retention period (default: 30 days)
+- **SQLite Backup API**: Uses SQLite's native backup API for consistency and reliability
+- **Statistics**: Reports backup count, total size, oldest and newest backups
+- **Zero Configuration**: Automatic daily backups enabled by default in Docker Compose setup
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `BACKUP_DIRECTORY` | Directory for backups | `/app/data/backups` |
+| `BACKUP_RETENTION_DAYS` | Number of days to keep backups | `30` |
+| `BACKUP_SCHEDULE` | Cron schedule for automatic backups | `0 2 * * *` (daily at 2 AM) |
+
+### Automated Backups
+
+**Automatic Daily Backups (Docker Compose):**
+
+Backups are automatically configured when using Docker Compose! The container includes a cron daemon that runs daily backups automatically.
+
+Configure via environment variables in your `docker-compose.yaml`:
+
+```yaml
+services:
+  backend:
+    environment:
+      - BACKUP_DIRECTORY=/app/data/backups
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM (cron format)
+```
+
+**Cron Schedule Format Examples:**
+- `0 2 * * *` - Daily at 2:00 AM (default)
+- `0 */6 * * *` - Every 6 hours
+- `0 0 * * 0` - Weekly on Sunday at midnight
+- `*/30 * * * *` - Every 30 minutes
+
+The backup runs automatically in the background. Check logs with:
 ```bash
-# Run backup script
+docker compose logs backend | grep -i backup
+```
+
+### Manual Backup
+
+Run the backup script manually:
+
+```bash
+# Inside Docker container
 docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py
 
-# Or manually copy database
+# Or if running locally
+python3 backend/scripts/backup_db.py
+```
+
+**Alternative Manual Methods:**
+```bash
+# Copy database directly
 cp data/homelab.db data/homelab.db.backup
 
 # Or use Docker
 docker exec homelab-inventory-backend cp /app/data/homelab.db /app/data/homelab.db.backup
 ```
 
-**Scheduled Backups:**
-Set up automated daily backups using cron or systemd. See `BACKUP_README.md` for scheduling options.
+### Restoring from Backup
+
+1. **Stop the application:**
+   ```bash
+   docker compose stop backend
+   ```
+
+2. **Backup current database (safety):**
+   ```bash
+   cp data/homelab.db data/homelab.db.current
+   ```
+
+3. **Restore from backup:**
+   ```bash
+   cp data/backups/homelab_backup_YYYYMMDD_HHMMSS.db data/homelab.db
+   ```
+
+4. **Set correct permissions:**
+   ```bash
+   chmod 644 data/homelab.db
+   ```
+
+5. **Start the application:**
+   ```bash
+   docker compose start backend
+   ```
+
+### Backup Verification
+
+The backup script logs:
+- Backup creation success/failure
+- Backup file size
+- Cleanup operations
+- Statistics (count, total size, oldest/newest)
+
+Check logs:
+```bash
+docker compose logs backend | grep -i backup
+```
+
+### Backup Best Practices
+
+1. **Regular Backups**: Schedule daily backups during low-traffic hours
+2. **Offsite Storage**: Copy backups to external storage or cloud storage
+3. **Test Restores**: Periodically test restoring from backups
+4. **Monitor Disk Space**: Ensure backup directory has sufficient space
+5. **Retention Policy**: Adjust `BACKUP_RETENTION_DAYS` based on your needs
+
+### Alternative Scheduling Methods
+
+#### Using Systemd Timer (Host System)
+
+Create `/etc/systemd/system/homelab-backup.service`:
+```ini
+[Unit]
+Description=Homelab Inventory Database Backup
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py
+```
+
+Create `/etc/systemd/system/homelab-backup.timer`:
+```ini
+[Unit]
+Description=Daily backup for Homelab Inventory
+Requires=homelab-backup.service
+
+[Timer]
+OnCalendar=daily
+OnCalendar=02:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+Enable and start:
+```bash
+sudo systemctl enable homelab-backup.timer
+sudo systemctl start homelab-backup.timer
+```
+
+### Backup Troubleshooting
+
+**Backup fails:**
+- Check database path is correct
+- Verify write permissions on backup directory
+- Check disk space availability
+- Review application logs: `docker compose logs backend | grep -i backup`
+
+**Backups not being cleaned up:**
+- Verify `BACKUP_RETENTION_DAYS` is set correctly
+- Check backup directory permissions
+- Review script logs for errors
+
+**Cannot restore backup:**
+- Ensure application is stopped before restoring
+- Verify backup file is not corrupted
+- Check file permissions after restore
 
 **Backup Location:**
 Backups are stored in `data/backups/` directory with timestamped filenames (e.g., `homelab_backup_20241120_143022.db`).
@@ -802,6 +957,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - Check disk space availability
 - Review backup script logs: `docker compose logs backend | grep -i backup`
 - Ensure database file exists and is accessible
+- See [Database Backup & Restore](#-database-backup--restore) section for detailed troubleshooting
 
 **Environment validation errors:**
 - Check application logs for specific validation errors
