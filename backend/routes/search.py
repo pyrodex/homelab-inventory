@@ -70,7 +70,8 @@ def advanced_search():
                 Device.function.ilike(f'%{search_term}%'),
                 Device.serial_number.ilike(f'%{search_term}%'),
                 Device.networks.ilike(f'%{search_term}%'),
-                Device.notes.ilike(f'%{search_term}%')
+                Device.interface_type.ilike(f'%{search_term}%'),
+                Device.poe_standards.ilike(f'%{search_term}%')
             )
             query = query.filter(search_filter)
         
