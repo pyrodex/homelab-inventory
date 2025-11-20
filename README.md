@@ -164,6 +164,8 @@ For local development:
 
 ### Using Docker Compose (Recommended)
 
+The application uses pre-built container images from GitHub Container Registry, so no build step is required!
+
 1. **Clone the repository:**
    ```bash
    git clone <repository-url>
@@ -175,21 +177,20 @@ For local development:
    cp docker-compose.yaml.example docker-compose.yaml
    ```
 
-3. **Build and start the containers:**
+3. **Start the containers:**
    ```bash
-   ./build.sh
-   ```
-   
-   Or manually:
-   ```bash
-   docker compose down
-   docker compose build --no-cache
    docker compose up -d
    ```
+
+   The images will be automatically pulled from GitHub Container Registry:
+   - `ghcr.io/<your-username>/homelab-inventory/backend:latest`
+   - `ghcr.io/<your-username>/homelab-inventory/frontend:latest`
 
 4. **Access the application:**
    - **Web UI**: http://localhost:5000
    - **SQLite Web Interface** (optional): http://localhost:5001
+
+> **Note:** If you prefer to build the images locally, you can use `./build.sh` or manually run `docker compose build` and update `docker-compose.yaml` to use `build:` instead of `image:`.
 
 ### Manual Setup
 
@@ -601,6 +602,11 @@ curl -X POST http://localhost:5000/api/devices \
 
 ### Building for Production
 
+**Using Pre-built Images (Recommended):**
+The project uses GitHub Actions to automatically build and publish images to GitHub Container Registry. Simply use the pre-built images as shown in the [Quick Start](#-quick-start) section.
+
+**Building Locally:**
+
 **Frontend:**
 ```bash
 cd frontend
@@ -611,6 +617,13 @@ npm run build
 ```bash
 docker compose build --no-cache
 ```
+
+**Building and Publishing via CI/CD:**
+Images are automatically built and published when you:
+- Push to the `main` branch
+- Create a git tag (e.g., `git tag v1.0.0 && git push --tags`)
+
+See the [CI/CD Pipeline](#-cicd-pipeline) section for more details.
 
 ### Testing
 
@@ -649,14 +662,18 @@ pytest
    ```
 
 2. **Review and customize `docker-compose.yaml`** as needed
+   - Update image names to match your GitHub username/organization (if different)
    - Set `SECRET_KEY` environment variable (important for production!)
    - Configure `CORS_ORIGINS` to restrict allowed origins
    - Adjust backup retention days if needed
 
-3. **Build and deploy:**
+3. **Pull and start the containers:**
    ```bash
-   ./build.sh
+   docker compose pull
+   docker compose up -d
    ```
+
+   The pre-built images will be pulled from GitHub Container Registry automatically.
 
 4. **Check health status:**
    ```bash
@@ -679,15 +696,84 @@ The Docker Compose configuration includes health checks for both services:
 
 ### Updating the Application
 
-1. **Pull latest changes:**
+1. **Pull latest images:**
    ```bash
-   git pull
+   docker compose pull
    ```
 
-2. **Rebuild and restart:**
+2. **Restart containers with new images:**
    ```bash
-   ./build.sh
+   docker compose up -d
    ```
+
+   Or in one command:
+   ```bash
+   docker compose pull && docker compose up -d
+   ```
+
+> **Note:** New images are automatically built and pushed to GitHub Container Registry via GitHub Actions when code is pushed to the `main` branch or when tags are created. See [CI/CD Pipeline](#-cicd-pipeline) section below.
+
+## 🔄 CI/CD Pipeline
+
+The project includes a GitHub Actions workflow that automatically builds and publishes Docker images to GitHub Container Registry (ghcr.io).
+
+### Automated Builds
+
+The CI/CD pipeline automatically:
+
+- **Builds images** for both backend and frontend on every push to `main`
+- **Tags images** with:
+  - `latest` for the main branch
+  - Version tags (e.g., `v1.0.0`, `1.0`, `1`) when git tags are created
+  - Branch names for feature branches
+  - SHA-based tags for traceability
+- **Pushes to GitHub Container Registry** at `ghcr.io/<username>/homelab-inventory/backend` and `ghcr.io/<username>/homelab-inventory/frontend`
+- **Uses build cache** for faster subsequent builds
+
+### Workflow Triggers
+
+The workflow runs automatically on:
+- Push to `main` branch
+- Git tags (e.g., `v1.0.0`)
+- Pull requests (builds but doesn't push)
+- Manual workflow dispatch
+
+### Using Pre-built Images
+
+The `docker-compose.yaml.example` file is configured to use the pre-built images from GitHub Container Registry. Simply copy it to `docker-compose.yaml` and run:
+
+```bash
+docker compose up -d
+```
+
+The images will be automatically pulled from GitHub Container Registry.
+
+### Image Names
+
+- **Backend**: `ghcr.io/<username>/homelab-inventory/backend:latest`
+- **Frontend**: `ghcr.io/<username>/homelab-inventory/frontend:latest`
+
+Replace `<username>` with your GitHub username or organization name.
+
+### Viewing Builds
+
+- Check the **Actions** tab in your GitHub repository to see build status
+- View published packages in the **Packages** section of your repository
+- Images are public by default (for public repositories) or can be configured with appropriate permissions
+
+### Local Development
+
+For local development and testing, you can still build images locally:
+
+```bash
+# Build locally
+docker compose -f docker-compose.yaml build
+
+# Or use the build script
+./build.sh
+```
+
+Update `docker-compose.yaml` to use `build:` instead of `image:` if you want to build locally.
 
 ## 💾 Database Backup & Restore
 

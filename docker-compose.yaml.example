@@ -1,5 +1,7 @@
 services:
   backend:
+    # Pre-built image from GitHub Container Registry
+    # Update the username/organization if different from your repository
     image: ghcr.io/pyrodex/homelab-inventory/backend:latest
     container_name: homelab-inventory-backend
     volumes:
@@ -24,6 +26,8 @@ services:
     networks:
       - homelab-network
   frontend:
+    # Pre-built image from GitHub Container Registry
+    # Update the username/organization if different from your repository
     image: ghcr.io/pyrodex/homelab-inventory/frontend:latest
     container_name: homelab-inventory-frontend
     ports:
