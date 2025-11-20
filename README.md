@@ -84,6 +84,9 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - PyYAML for Prometheus configuration generation
 - psutil for system metrics (optional)
 - pytest for testing framework
+- Automated database backup system
+- Standardized API response format
+- Environment validation on startup
 
 **Infrastructure:**
 - Docker & Docker Compose for containerization
@@ -258,6 +261,10 @@ For local development:
 | `DATABASE_PATH` | Path to SQLite database file | `/app/data/homelab.db` |
 | `PROMETHEUS_EXPORT_PATH` | Directory for Prometheus config exports | `/app/prometheus_targets` |
 | `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
+| `BACKUP_DIRECTORY` | Directory for database backups | `/app/data/backups` |
+| `BACKUP_RETENTION_DAYS` | Number of days to keep backups before cleanup | `30` |
+| `SECRET_KEY` | Flask secret key (change in production!) | `dev-secret-key-change-in-production` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 
 #### Docker Compose
 
@@ -283,6 +290,20 @@ The application uses SQLite by default, stored in the `data/` directory. The dat
 - Database indexes on frequently queried fields (name, device_type, ip_address, monitoring_enabled, etc.)
 - Composite indexes for common query patterns
 - Foreign key indexes for faster joins
+
+**Database Backups:**
+- Automated backup script included (`backend/scripts/backup_db.py`)
+- Creates timestamped backups with automatic cleanup
+- Configurable retention period (default: 30 days)
+- See [BACKUP_README.md](BACKUP_README.md) for detailed backup and restore instructions
+- Manual backup: `docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py`
+- Backups stored in `data/backups/` directory
+
+**Environment Validation:**
+- Application validates environment variables and paths on startup
+- Automatically creates required directories if they don't exist
+- Provides security warnings in production (default SECRET_KEY, open CORS)
+- Fails fast in production if critical configuration is missing
 
 **To use a different database:**
 1. Set the `DATABASE_PATH` environment variable
@@ -474,6 +495,32 @@ All API endpoints are prefixed with `/api`
   - Returns: Database status, system metrics (CPU, memory, disk), device counts
   - Requires psutil for system metrics (gracefully degrades if unavailable)
 
+### API Response Format
+
+All API responses follow a standardized format:
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "data": {...},
+  "message": "Device created successfully"
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "error": "Validation error",
+  "details": {
+    "name": ["Missing data for required field."],
+    "device_type": ["Invalid device type."]
+  },
+  "error_code": "VALIDATION_ERROR"
+}
+```
+
 ### Example API Request
 
 ```bash
@@ -492,6 +539,17 @@ curl -X POST http://localhost:5000/api/devices \
     "networks": "LAN",
     "monitoring_enabled": true
   }'
+
+# Response:
+# {
+#   "success": true,
+#   "data": {
+#     "id": 1,
+#     "name": "Web Server 01",
+#     ...
+#   },
+#   "message": "Device created successfully"
+# }
 ```
 
 ## 🛠️ Development
@@ -589,16 +647,33 @@ pytest
    ```
 
 2. **Review and customize `docker-compose.yaml`** as needed
+   - Set `SECRET_KEY` environment variable (important for production!)
+   - Configure `CORS_ORIGINS` to restrict allowed origins
+   - Adjust backup retention days if needed
 
 3. **Build and deploy:**
    ```bash
    ./build.sh
    ```
 
-4. **Check logs:**
+4. **Check health status:**
+   ```bash
+   docker compose ps
+   # Should show "healthy" status for backend and frontend
+   ```
+
+5. **Check logs:**
    ```bash
    docker compose logs -f
    ```
+
+### Health Checks
+
+The Docker Compose configuration includes health checks for both services:
+- **Backend**: Checks `/api/health` endpoint every 30 seconds
+- **Frontend**: Verifies web server is responding
+- Services wait for backend to be healthy before starting
+- Unhealthy containers are automatically restarted
 
 ### Updating the Application
 
@@ -614,15 +689,26 @@ pytest
 
 ### Backup
 
-The database is stored in the `data/` directory. To backup:
+**Automated Backups:**
+The application includes an automated backup script. See [BACKUP_README.md](BACKUP_README.md) for complete backup and restore instructions.
 
+**Manual Backup:**
 ```bash
-# Backup database
+# Run backup script
+docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py
+
+# Or manually copy database
 cp data/homelab.db data/homelab.db.backup
 
 # Or use Docker
 docker exec homelab-inventory-backend cp /app/data/homelab.db /app/data/homelab.db.backup
 ```
+
+**Scheduled Backups:**
+Set up automated daily backups using cron or systemd. See `BACKUP_README.md` for scheduling options.
+
+**Backup Location:**
+Backups are stored in `data/backups/` directory with timestamped filenames (e.g., `homelab_backup_20241120_143022.db`).
 
 ### Data Persistence
 
@@ -697,8 +783,10 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 **Frontend not connecting to backend:**
 - Verify both containers are running: `docker compose ps`
+- Check container health status: `docker compose ps` (should show "healthy")
 - Check backend logs: `docker compose logs backend`
 - Ensure CORS is properly configured
+- Verify backend health endpoint: `curl http://localhost:5000/api/health`
 
 **Prometheus export fails:**
 - Verify the export directory exists and is writable
@@ -708,6 +796,24 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 **Port already in use:**
 - Change the port mapping in `docker-compose.yaml`
 - Or stop the service using the port
+
+**Backup fails:**
+- Verify `BACKUP_DIRECTORY` exists and is writable
+- Check disk space availability
+- Review backup script logs: `docker compose logs backend | grep -i backup`
+- Ensure database file exists and is accessible
+
+**Environment validation errors:**
+- Check application logs for specific validation errors
+- Verify required directories exist or can be created
+- Review environment variable values
+- In production, ensure `SECRET_KEY` is set (not using default)
+
+**API returns unexpected format:**
+- All endpoints now return standardized format with `success` field
+- Check for `data` field in success responses
+- Check for `error` and `details` fields in error responses
+- Update client code if needed to handle new format
 
 ### Getting Help
 
@@ -735,6 +841,11 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [x] Health check endpoints
 - [x] Performance optimizations (database indexes)
 - [x] iOS mobile optimizations
+- [x] Database backup automation
+- [x] Standardized API responses
+- [x] Enhanced UI error handling with field-specific validation
+- [x] Docker health checks
+- [x] Environment variable validation
 
 ### Future Enhancements
 
