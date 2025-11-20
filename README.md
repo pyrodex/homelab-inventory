@@ -25,11 +25,13 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ### User Interface
 - **Modern React UI**: Beautiful, responsive interface built with React and Tailwind CSS
-- **Mobile-Optimized**: Fully optimized for iOS and mobile devices with touch-friendly controls
-- **Search & Filter**: Powerful search across all device fields and filter by device type
+- **Mobile-Optimized**: Fully optimized for iOS and mobile devices with touch-friendly controls, safe area support, and optimized touch targets
+- **Advanced Search**: Powerful multi-field search with expandable filters (vendor, model, location, monitoring status, PoE, IP address)
+- **Search & Filter**: Real-time search across device fields with debouncing and filter by device type
 - **View Modes**: Switch between full detail view and condensed list view
 - **Real-time Stats**: Dashboard showing total devices, monitoring status, and device type breakdowns
 - **Device Cloning**: Quickly duplicate devices with similar configurations
+- **Bulk Operations**: Import/export devices in JSON or CSV format, bulk delete multiple devices
 
 ### Network & Power Management
 - **Network Segmentation**: Assign devices to specific networks (LAN, IoT, DMZ, GUEST, or ALL)
@@ -39,9 +41,26 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ### Administration
 - **Vendor Management**: Add, edit, and remove vendors with automatic model relationship handling
-- **Model Management**: Associate models with vendors and track device counts
+- **Model Management**: Associate models with vendors, filter models by vendor, and track device counts
 - **Location Management**: Create and organize locations with device count tracking
 - **SQLite Web Interface**: Optional SQLite-web container for direct database access
+
+### Bulk Operations
+- **Import Devices**: Import multiple devices from JSON array or CSV file with validation and error reporting
+- **Export Devices**: Export all devices or filtered by type in JSON or CSV format
+- **Bulk Delete**: Delete multiple devices at once by ID (up to 100 at a time)
+- **Error Handling**: Detailed import/export results showing successful and failed operations
+
+### Advanced Search & Filtering
+- **Multi-field Search**: Search across name, IP address, function, serial number, networks, interface types, and PoE standards
+- **Advanced Filters**: Filter by device type, vendor, model, location, monitoring status, PoE powered status, and IP address presence
+- **Filter Chips**: Visual representation of active filters with easy removal
+- **Real-time Results**: Instant search results with debouncing for optimal performance
+
+### Monitoring & Observability
+- **Health Checks**: Basic and detailed health endpoints for monitoring application status
+- **System Metrics**: CPU, memory, and disk usage metrics (requires psutil)
+- **Database Statistics**: Device counts and database connectivity status
 
 ## 🏗️ Architecture
 
@@ -55,11 +74,16 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - Mobile-optimized with iOS-specific enhancements
 
 **Backend:**
-- Flask 3.0 RESTful API
+- Flask 3.0 RESTful API with modular blueprint architecture
 - SQLAlchemy ORM for database operations
-- SQLite database (lightweight, file-based)
+- Flask-Migrate for database schema versioning
+- SQLite database (lightweight, file-based) with optimized indexes
 - Flask-CORS for cross-origin resource sharing
+- Flask-Limiter for API rate limiting
+- Marshmallow for input validation and sanitization
 - PyYAML for Prometheus configuration generation
+- psutil for system metrics (optional)
+- pytest for testing framework
 
 **Infrastructure:**
 - Docker & Docker Compose for containerization
@@ -72,32 +96,53 @@ A modern, web-based inventory management system for homelab infrastructure with 
 ```
 homelab-inventory/
 ├── backend/
-│   ├── app.py              # Flask application and API routes
-│   ├── Dockerfile          # Backend container definition
-│   └── requirements.txt    # Python dependencies
+│   ├── app.py              # Flask application entry point
+│   ├── config.py           # Configuration classes (Development/Production/Testing)
+│   ├── models.py            # SQLAlchemy database models
+│   ├── validators.py        # Marshmallow schemas for input validation
+│   ├── exceptions.py        # Custom exception classes
+│   ├── routes/              # API route blueprints
+│   │   ├── devices.py       # Device CRUD operations
+│   │   ├── monitors.py      # Monitor management
+│   │   ├── admin.py         # Vendor/Model/Location management
+│   │   ├── stats.py         # Statistics endpoints
+│   │   ├── prometheus.py    # Prometheus export
+│   │   ├── bulk.py          # Bulk operations (import/export/delete)
+│   │   ├── search.py        # Advanced search endpoints
+│   │   └── health.py        # Health check endpoints
+│   ├── services/            # Business logic services
+│   │   └── prometheus_service.py  # Prometheus export logic
+│   ├── tests/               # Test suite
+│   │   ├── test_models.py   # Model tests
+│   │   └── test_api.py     # API endpoint tests
+│   ├── migrations/           # Database migration scripts (Flask-Migrate)
+│   ├── pytest.ini           # Pytest configuration
+│   ├── Dockerfile           # Backend container definition
+│   └── requirements.txt     # Python dependencies
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # React components
-│   │   │   ├── admin/      # Administration components
-│   │   │   ├── common/     # Shared components
-│   │   │   └── devices/    # Device-related components
-│   │   ├── constants/      # Application constants
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── services/       # API service layer
-│   │   ├── utils/          # Utility functions
-│   │   ├── App.jsx         # Main application component
-│   │   ├── index.css       # Global styles
-│   │   └── main.jsx        # Application entry point
-│   ├── Dockerfile          # Frontend container definition
-│   ├── nginx.conf          # Nginx configuration
-│   ├── package.json        # Node.js dependencies
-│   ├── tailwind.config.cjs # Tailwind CSS configuration
-│   └── vite.config.js     # Vite configuration
-├── data/                   # Database storage (created on first run)
-├── targets/                # Prometheus export directory (created on first run)
-├── build.sh                # Build and deployment script
+│   │   ├── components/      # React components
+│   │   │   ├── admin/       # Administration components
+│   │   │   ├── bulk/        # Bulk operations modal
+│   │   │   ├── common/      # Shared components (ErrorAlert, etc.)
+│   │   │   ├── devices/     # Device-related components
+│   │   │   └── search/      # Advanced search component
+│   │   ├── constants/       # Application constants (device types, etc.)
+│   │   ├── services/        # API service layer
+│   │   ├── utils/           # Utility functions
+│   │   ├── App.jsx          # Main application component
+│   │   ├── index.css        # Global styles (with iOS optimizations)
+│   │   └── main.jsx         # Application entry point
+│   ├── Dockerfile           # Frontend container definition
+│   ├── nginx.conf           # Nginx configuration
+│   ├── package.json         # Node.js dependencies
+│   ├── tailwind.config.cjs  # Tailwind CSS configuration
+│   └── vite.config.js       # Vite configuration
+├── data/                    # Database storage (created on first run)
+├── targets/                 # Prometheus export directory (created on first run)
+├── build.sh                 # Build and deployment script
 ├── docker-compose.yaml.example  # Docker Compose example
-└── README.md               # This file
+└── README.md                # This file
 ```
 
 ## 📋 Prerequisites
@@ -225,11 +270,25 @@ Edit `docker-compose.yaml` to customize:
 
 ### Database
 
-The application uses SQLite by default, stored in the `data/` directory. The database is automatically created on first run. To use a different database:
+The application uses SQLite by default, stored in the `data/` directory. The database is automatically created on first run.
 
+**Database Migrations:**
+- The project uses Flask-Migrate for schema versioning
+- Migrations are stored in `backend/migrations/`
+- To initialize migrations: `flask db init` (if needed)
+- To create a migration: `flask db migrate -m "description"`
+- To apply migrations: `flask db upgrade`
+
+**Performance Optimizations:**
+- Database indexes on frequently queried fields (name, device_type, ip_address, monitoring_enabled, etc.)
+- Composite indexes for common query patterns
+- Foreign key indexes for faster joins
+
+**To use a different database:**
 1. Set the `DATABASE_PATH` environment variable
 2. Ensure the directory exists and is writable
-3. Restart the application
+3. Run migrations if needed
+4. Restart the application
 
 ### Prometheus Integration
 
@@ -272,7 +331,10 @@ scrape_configs:
 1. Click the **"Admin"** button in the header
 2. Navigate between tabs:
    - **Vendors**: Add, edit, or remove vendors
-   - **Models**: Add models associated with vendors
+   - **Models**: 
+     - Select a vendor from the dropdown to filter models (or "All Vendors" to see all)
+     - Add models associated with the selected vendor
+     - Models list automatically filters when a vendor is selected
    - **Locations**: Add, edit, or remove locations
 3. Use inline editing for quick updates
 
@@ -290,9 +352,34 @@ The export organizes targets by monitor type:
 
 ### Searching and Filtering
 
-- **Search**: Use the search box to find devices by name, IP, function, vendor, model, location, serial number, or monitor type
-- **Filter**: Select a device type from the dropdown to filter devices
+- **Quick Search**: Use the search box to find devices by name, IP, function, serial number, networks, interface types, or PoE standards
+- **Advanced Search**: Click the "Filters" button to expand advanced filtering options:
+  - Filter by device type, vendor, model, or location
+  - Filter by monitoring status (enabled/disabled)
+  - Filter by PoE powered status
+  - Filter by IP address presence
+  - Combine multiple filters for precise results
+- **Filter Chips**: Active filters are displayed as removable chips above the results
+- **Device Type Filter**: Select a device type from the dropdown to filter devices
 - **View Modes**: Toggle between full detail view and condensed list view
+
+### Bulk Operations
+
+- **Bulk Import**: 
+  - Import devices from JSON array or CSV file
+  - CSV format: name, device_type, ip_address, function, vendor, model, location, serial_number, networks, interface_type, poe_powered, poe_standards, monitoring_enabled
+  - JSON format: Array of device objects matching the API schema
+  - Results show successful imports and failed items with error details
+  
+- **Bulk Export**:
+  - Export all devices or filter by device type
+  - Choose JSON or CSV format
+  - Files are automatically downloaded with descriptive filenames
+  
+- **Bulk Delete**:
+  - Delete multiple devices by entering comma-separated IDs
+  - Maximum 100 devices per operation
+  - Confirmation dialog prevents accidental deletions
 
 ### Device Actions
 
@@ -353,6 +440,40 @@ All API endpoints are prefixed with `/api`
 - `GET /api/prometheus/export?mode=write` - Write Prometheus configs to disk
 - `GET /api/prometheus/export?mode=download` - Download Prometheus configs as ZIP
 
+#### Bulk Operations
+
+- `POST /api/bulk/devices/import` - Import devices from JSON array or CSV file
+  - JSON: Send array of device objects in request body
+  - CSV: Send multipart/form-data with `file` field
+- `GET /api/bulk/devices/export?format=json&type=<device_type>` - Export devices
+  - `format`: `json` or `csv`
+  - `type`: Optional device type filter
+- `POST /api/bulk/devices/delete` - Bulk delete devices
+  - Body: `{ "device_ids": [1, 2, 3, ...] }`
+  - Maximum 100 devices per request
+
+#### Advanced Search
+
+- `GET /api/search/devices` - Advanced search with multiple filters
+  - Query parameters:
+    - `q`: Search term (searches across multiple fields)
+    - `type`: Device type filter
+    - `vendor_id`: Filter by vendor ID
+    - `model_id`: Filter by model ID
+    - `location_id`: Filter by location ID
+    - `monitoring_enabled`: `true` or `false`
+    - `poe_powered`: `true` or `false`
+    - `has_ip`: `true` or `false`
+  - Returns: `{ "results": [...], "count": N, "filters_applied": {...} }`
+
+#### Health Checks
+
+- `GET /api/health` - Basic health check
+  - Returns: `{ "status": "healthy", "timestamp": "...", "service": "..." }`
+- `GET /api/health/detailed` - Detailed health check with system metrics
+  - Returns: Database status, system metrics (CPU, memory, disk), device counts
+  - Requires psutil for system metrics (gracefully degrades if unavailable)
+
 ### Example API Request
 
 ```bash
@@ -384,6 +505,13 @@ curl -X POST http://localhost:5000/api/devices \
    source venv/bin/activate
    pip install -r requirements.txt
    export FLASK_ENV=development
+   export DATABASE_PATH=./homelab.db
+   export PROMETHEUS_EXPORT_PATH=./prometheus_targets
+   
+   # Initialize database migrations (first time only)
+   flask db upgrade
+   
+   # Run the application
    python app.py
    ```
 
@@ -396,9 +524,20 @@ curl -X POST http://localhost:5000/api/devices \
 
 ### Code Structure
 
-- **Backend**: Follows Flask best practices with RESTful API design
+- **Backend**: Modular Flask architecture with blueprints, services, and models separation
+  - Routes organized by domain (devices, monitors, admin, bulk, search, health)
+  - Business logic in services layer
+  - Database models in separate module
+  - Input validation via Marshmallow schemas
+  - Custom exception handling
 - **Frontend**: Component-based React architecture with service layer for API calls
+  - Components organized by feature (devices, admin, bulk, search, common)
+  - Centralized API service layer
+  - Utility functions for common operations
 - **Styling**: Tailwind CSS utility classes with custom CSS for iOS optimizations
+  - Mobile-first responsive design
+  - Touch-friendly controls (44px minimum)
+  - Safe area support for notched devices
 
 ### Building for Production
 
@@ -415,11 +554,28 @@ docker compose build --no-cache
 
 ### Testing
 
-Currently, the project doesn't include automated tests. Consider adding:
-- Unit tests for backend API endpoints
-- Integration tests for database operations
+The project includes a basic test structure using pytest:
+
+**Backend Tests:**
+```bash
+cd backend
+pytest
+```
+
+**Test Structure:**
+- `tests/test_models.py` - Unit tests for database models
+- `tests/test_api.py` - Integration tests for API endpoints
+
+**Adding Tests:**
+- Follow pytest conventions
+- Use pytest-flask fixtures for Flask app context
+- Test both success and error cases
+- Mock external dependencies when appropriate
+
+**Future Testing Enhancements:**
 - Frontend component tests with React Testing Library
 - E2E tests with Playwright or Cypress
+- Performance and load testing
 
 ## 🐳 Docker Deployment
 
@@ -487,7 +643,9 @@ Ensure volumes are properly mounted:
 - **Rate Limiting**: Flask-Limiter is configured to prevent abuse
   - Default limits: 200 requests/hour, 50 requests/minute per IP
   - Write operations (POST/PUT/DELETE): 20-30 requests/minute
+  - Bulk operations: 5-10 requests/minute (more restrictive)
   - Prometheus export: 10 requests/minute
+  - Search operations: 60 requests/minute
   - Rate limit errors return HTTP 429 with descriptive messages
 
 - **CORS Configuration**: Configurable CORS origins via environment variable
@@ -563,19 +721,34 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 
 ## 🎯 Roadmap
 
-Potential future enhancements:
+### Completed Features ✅
+
+- [x] Input validation and sanitization (Marshmallow schemas)
+- [x] API rate limiting (Flask-Limiter)
+- [x] CORS configuration
+- [x] Modular backend architecture (blueprints)
+- [x] Database migrations (Flask-Migrate)
+- [x] Comprehensive error handling
+- [x] Basic test structure (pytest)
+- [x] Bulk import/export operations
+- [x] Advanced search and filtering
+- [x] Health check endpoints
+- [x] Performance optimizations (database indexes)
+- [x] iOS mobile optimizations
+
+### Future Enhancements
 
 - [ ] User authentication and authorization
 - [ ] Multi-user support with role-based access
-- [ ] Device templates and bulk import/export
-- [ ] Advanced search and filtering options
+- [ ] Device templates and presets
 - [ ] Device history and change tracking
 - [ ] Integration with other monitoring systems (Grafana, etc.)
-- [ ] API rate limiting and security enhancements
 - [ ] Automated device discovery
-- [ ] Health check endpoints
 - [ ] Dark mode theme
 - [ ] Internationalization (i18n) support
+- [ ] Caching layer (Redis) for improved performance
+- [ ] API documentation (OpenAPI/Swagger)
+- [ ] WebSocket support for real-time updates
 
 ## 🙏 Acknowledgments
 
