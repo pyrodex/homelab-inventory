@@ -1,8 +1,6 @@
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/pyrodex/homelab-inventory/backend:latest
     container_name: homelab-inventory-backend
     volumes:
       - ./data:/app/data
@@ -26,9 +24,7 @@ services:
     networks:
       - homelab-network
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/pyrodex/homelab-inventory/frontend:latest
     container_name: homelab-inventory-frontend
     ports:
       - 5000:80
