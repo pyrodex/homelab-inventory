@@ -170,46 +170,46 @@ function AdminModal({ onClose, onError }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold text-gray-900">Administration</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
+      <div className="bg-white rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-hidden flex flex-col modal-content">
+        <div className="p-4 md:p-6 border-b border-gray-200">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Administration</h2>
             <button 
               onClick={onClose} 
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 active:bg-gray-100 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close admin panel"
             >
               <X size={24} />
             </button>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex flex-col md:flex-row gap-2">
             <button 
               onClick={() => setActiveTab('vendors')} 
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'vendors' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-blue-600 text-white active:bg-blue-700' 
+                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
               }`}
             >
               Vendors
             </button>
             <button 
               onClick={() => setActiveTab('models')} 
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'models' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-blue-600 text-white active:bg-blue-700' 
+                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
               }`}
             >
               Models
             </button>
             <button 
               onClick={() => setActiveTab('locations')} 
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'locations' 
-                  ? 'bg-blue-600 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-blue-600 text-white active:bg-blue-700' 
+                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
               }`}
             >
               Locations
@@ -217,7 +217,7 @@ function AdminModal({ onClose, onError }) {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
           {loading ? (
             <div className="text-center py-12">
               <p className="text-gray-600">Loading...</p>
@@ -279,18 +279,18 @@ function VendorsTab({
     <div>
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-3">Add New Vendor</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row gap-2">
           <input 
             type="text" 
             value={newVendorName} 
             onChange={(e) => setNewVendorName(e.target.value)} 
             placeholder="Vendor name" 
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
             onKeyPress={(e) => e.key === 'Enter' && addVendor()} 
           />
           <button 
             onClick={addVendor} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="px-4 py-2.5 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px]"
           >
             Add
           </button>
@@ -312,7 +312,7 @@ function VendorsTab({
                       updateVendor(vendor.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                   autoFocus 
                 />
               ) : (
@@ -326,17 +326,17 @@ function VendorsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingVendor(vendor.id)} 
-                  className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                  className="p-2 text-blue-600 active:bg-blue-100 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Edit vendor"
                 >
-                  <Edit2 size={16} />
+                  <Edit2 size={18} />
                 </button>
                 <button 
                   onClick={() => deleteVendor(vendor.id)} 
-                  className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                  className="p-2 text-red-600 active:bg-red-100 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Delete vendor"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             </div>
@@ -374,11 +374,11 @@ function ModelsTab({
             Please add at least one vendor first before adding models.
           </p>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex flex-col md:flex-row gap-2">
             <select 
               value={selectedVendorForModel} 
               onChange={(e) => setSelectedVendorForModel(e.target.value)} 
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
             >
               <option value="">Select Vendor...</option>
               {vendors.map(vendor => (
@@ -390,13 +390,13 @@ function ModelsTab({
               value={newModelName} 
               onChange={(e) => setNewModelName(e.target.value)} 
               placeholder="Model name" 
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
               onKeyPress={(e) => e.key === 'Enter' && addModel()} 
             />
             <button 
               onClick={addModel} 
               disabled={!selectedVendorForModel} 
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2.5 bg-green-600 text-white rounded-lg active:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors touch-manipulation min-h-[44px]"
             >
               Add
             </button>
@@ -414,7 +414,7 @@ function ModelsTab({
                   <select 
                     defaultValue={model.vendor_id} 
                     onBlur={(e) => updateModel(model.id, model.name, e.target.value)} 
-                    className="px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
                   >
                     {vendors.map(vendor => (
                       <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
@@ -429,7 +429,7 @@ function ModelsTab({
                         updateModel(model.id, e.target.value, model.vendor_id); 
                       } 
                     }} 
-                    className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                     autoFocus 
                   />
                 </div>
@@ -486,18 +486,18 @@ function LocationsTab({
     <div>
       <div className="mb-6">
         <h3 className="text-lg font-semibold mb-3">Add New Location</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row gap-2">
           <input 
             type="text" 
             value={newLocationName} 
             onChange={(e) => setNewLocationName(e.target.value)} 
             placeholder="Location name (e.g., Data Center, Office, Rack 1)" 
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
             onKeyPress={(e) => e.key === 'Enter' && addLocation()} 
           />
           <button 
             onClick={addLocation} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            className="px-4 py-2.5 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px]"
           >
             Add
           </button>
@@ -519,7 +519,7 @@ function LocationsTab({
                       updateLocation(location.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                   autoFocus 
                 />
               ) : (

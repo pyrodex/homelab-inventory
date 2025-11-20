@@ -130,44 +130,46 @@ function App() {
       
       {/* Header */}
       <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex justify-between items-center">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Homelab Inventory</h1>
-              <p className="text-gray-600 mt-1">Manage your infrastructure monitoring</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Homelab Inventory</h1>
+              <p className="text-sm md:text-base text-gray-600 mt-1">Manage your infrastructure monitoring</p>
             </div>
-            <div className="flex gap-3">
+            <div className="grid grid-cols-2 md:flex md:gap-3 gap-2">
               <button 
                 onClick={() => setShowAdminModal(true)} 
-                className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation"
                 aria-label="Open admin panel"
               >
-                <Settings size={20} />
-                Admin
+                <Settings size={18} className="md:w-5 md:h-5" />
+                <span className="text-sm md:text-base">Admin</span>
               </button>
               <button 
                 onClick={() => handleExportPrometheus('write')} 
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation"
                 aria-label="Write Prometheus files"
               >
-                <Check size={20} />
-                Write Prometheus Files
+                <Check size={18} className="md:w-5 md:h-5" />
+                <span className="hidden md:inline text-sm md:text-base">Write Prometheus Files</span>
+                <span className="md:hidden text-sm">Write</span>
               </button>
               <button 
                 onClick={() => handleExportPrometheus('download')} 
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation"
                 aria-label="Download configuration"
               >
-                <Download size={20} />
-                Download Config
+                <Download size={18} className="md:w-5 md:h-5" />
+                <span className="hidden md:inline text-sm md:text-base">Download Config</span>
+                <span className="md:hidden text-sm">Download</span>
               </button>
               <button 
                 onClick={() => setShowAddModal(true)} 
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation col-span-2 md:col-span-1"
                 aria-label="Add new device"
               >
-                <Plus size={20} />
-                Add Device
+                <Plus size={18} className="md:w-5 md:h-5" />
+                <span className="text-sm md:text-base">Add Device</span>
               </button>
             </div>
           </div>
@@ -176,8 +178,8 @@ function App() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center justify-between">
                 <div>
@@ -212,15 +214,15 @@ function App() {
       {/* Filters */}
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex items-end justify-between gap-4">
-            <div className="flex-1">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div className="flex-1 w-full md:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Filter by Device Type
               </label>
               <select 
                 value={selectedType} 
                 onChange={(e) => setSelectedType(e.target.value)} 
-                className="w-full md:w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full md:w-64 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
               >
                 <option value="all">All Devices</option>
                 {DEVICE_TYPES.map(type => (
@@ -228,7 +230,7 @@ function App() {
                 ))}
               </select>
             </div>
-            <div className="flex-1 max-w-md">
+            <div className="flex-1 w-full md:max-w-md">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Search Devices
               </label>
@@ -236,17 +238,17 @@ function App() {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, IP, function, vendor, model..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search by name, IP, function..."
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 self-start md:self-auto">
               <button 
                 onClick={() => setViewMode('full')} 
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center ${
                   viewMode === 'full' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white active:bg-blue-700' 
+                    : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                 }`} 
                 title="Full View"
                 aria-label="Full view"
@@ -255,10 +257,10 @@ function App() {
               </button>
               <button 
                 onClick={() => setViewMode('condensed')} 
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2.5 md:p-2 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center ${
                   viewMode === 'condensed' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-blue-600 text-white active:bg-blue-700' 
+                    : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                 }`} 
                 title="Condensed View"
                 aria-label="Condensed view"

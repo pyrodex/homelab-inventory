@@ -234,15 +234,22 @@ function DeviceModal({ device, onClose, onSave, onError }) {
   const saveButtonText = device && device.id ? 'Update Device' : device ? 'Clone Device' : 'Create Device';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">{modalTitle}</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
+      <div className="bg-white rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content">
+        <div className="sticky top-0 bg-white z-10 p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900">{modalTitle}</h2>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Close modal"
+          >
+            <X size={24} />
+          </button>
         </div>
         
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Device Name *
@@ -251,7 +258,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 type="text" 
                 value={formData.name} 
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 
               />
             </div>
@@ -263,7 +270,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               <select 
                 value={formData.device_type} 
                 onChange={(e) => setFormData({ ...formData, device_type: e.target.value })} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
                 required
               >
                 {DEVICE_TYPES.map(type => (
@@ -281,7 +288,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 value={formData.ip_address} 
                 onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })} 
                 placeholder="192.168.1.10, example.com, or 192.168.1.10:9100" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 
               />
             </div>
@@ -295,7 +302,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 value={formData.function} 
                 onChange={(e) => setFormData({ ...formData, function: e.target.value })} 
                 placeholder="e.g., Web Server, Storage" 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 
               />
             </div>
@@ -307,7 +314,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               <select 
                 value={formData.vendor_id} 
                 onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value, model_id: '' })} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
                 required
               >
                 <option value="">Select Vendor...</option>
@@ -325,7 +332,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 value={formData.model_id} 
                 onChange={(e) => setFormData({ ...formData, model_id: e.target.value })} 
                 disabled={!formData.vendor_id} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-base touch-manipulation" 
                 required
               >
                 <option value="">Select Model...</option>
@@ -342,7 +349,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               <select 
                 value={formData.location_id} 
                 onChange={(e) => setFormData({ ...formData, location_id: e.target.value })} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
                 required
               >
                 <option value="">Select Location...</option>
@@ -360,7 +367,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 type="text" 
                 value={formData.serial_number} 
                 onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} 
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 
               />
             </div>
@@ -376,10 +383,10 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                     key={network} 
                     type="button" 
                     onClick={() => handleNetworkToggle(network)} 
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                       selectedNetworks.includes(network) 
-                        ? 'bg-blue-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-blue-600 text-white active:bg-blue-700' 
+                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                     }`}
                   >
                     {network}
@@ -400,10 +407,10 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                     key={iface} 
                     type="button" 
                     onClick={() => handleInterfaceToggle(iface)} 
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                       selectedInterfaces.includes(iface) 
-                        ? 'bg-purple-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-purple-600 text-white active:bg-purple-700' 
+                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                     }`}
                   >
                     {iface}
@@ -424,10 +431,10 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                     key={poe} 
                     type="button" 
                     onClick={() => handlePoeStandardToggle(poe)} 
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                       selectedPoeStandards.includes(poe) 
-                        ? 'bg-amber-600 text-white' 
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-amber-600 text-white active:bg-amber-700' 
+                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
                     }`}
                   >
                     {poe}
@@ -443,21 +450,21 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 Options
               </label>
               <div className="space-y-2">
-                <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px]">
                   <input 
                     type="checkbox" 
                     checked={formData.poe_powered} 
                     onChange={(e) => setFormData({ ...formData, poe_powered: e.target.checked })} 
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" 
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
                   <span className="text-sm font-medium text-gray-700">PoE Powered</span>
                 </label>
-                <label className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px]">
                   <input 
                     type="checkbox" 
                     checked={formData.monitoring_enabled} 
                     onChange={(e) => setFormData({ ...formData, monitoring_enabled: e.target.checked })} 
-                    className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500" 
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
                   <span className="text-sm font-medium text-gray-700">Monitoring Enabled</span>
                 </label>
@@ -490,7 +497,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               </div>
             )}
             
-            <div className="flex gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
               <select 
                 value={newMonitor.monitor_type} 
                 onChange={(e) => { 
@@ -501,7 +508,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                     port: type?.defaultPort || null 
                   }); 
                 }} 
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
               >
                 {MONITOR_TYPES.map(type => (
                   <option key={type.value} value={type.value}>{type.label}</option>
@@ -512,12 +519,12 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 value={newMonitor.port || ''} 
                 onChange={(e) => setNewMonitor({ ...newMonitor, port: e.target.value ? parseInt(e.target.value) : null })} 
                 placeholder="Port" 
-                className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                className="w-full md:w-24 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
               />
               <button 
                 type="button" 
                 onClick={addMonitor} 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px]"
               >
                 Add
               </button>
@@ -525,18 +532,18 @@ function DeviceModal({ device, onClose, onSave, onError }) {
           </div>
           
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-6 border-t">
+          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white pb-4 md:pb-0 -mx-4 md:mx-0 px-4 md:px-0">
             <button 
               type="button" 
               onClick={onClose} 
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="w-full md:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg active:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
             >
               Cancel
             </button>
             <button 
               type="button" 
               onClick={handleSave} 
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className="w-full md:w-auto px-4 py-2.5 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px]"
             >
               {saveButtonText}
             </button>

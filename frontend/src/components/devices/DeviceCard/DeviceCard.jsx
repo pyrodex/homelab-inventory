@@ -7,14 +7,14 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
 
   if (viewMode === 'condensed') {
     return (
-      <div className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-4 flex-1">
+      <div className="bg-white p-4 rounded-lg shadow active:shadow-lg transition-shadow">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+          <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-gray-900 truncate">{device.name}</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                <h3 className="text-base md:text-lg font-bold text-gray-900 truncate">{device.name}</h3>
                 <span 
-                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  className={`px-2 py-1 rounded-full text-xs font-medium self-start ${
                     device.monitoring_enabled 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-gray-100 text-gray-800'
@@ -23,9 +23,9 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
                   {device.monitoring_enabled ? 'Active' : 'Disabled'}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600">
                 <span>{deviceTypeLabel}</span>
-                {device.ip_address && <span>{device.ip_address}</span>}
+                {device.ip_address && <span className="break-all">{device.ip_address}</span>}
                 {device.location_name && <span>📍 {device.location_name}</span>}
                 {device.monitors && device.monitors.length > 0 && (
                   <span className="text-blue-600">
@@ -35,13 +35,13 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
               </div>
             </div>
           </div>
-          <div className="flex gap-2 ml-4">
+          <div className="flex gap-2 md:ml-4">
             <button 
               onClick={() => onToggleMonitoring(device)} 
-              className={`p-2 rounded-lg transition-colors ${
+              className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
                 device.monitoring_enabled 
-                  ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                  : 'bg-green-100 text-green-600 hover:bg-green-200'
+                  ? 'bg-red-100 text-red-600 active:bg-red-200' 
+                  : 'bg-green-100 text-green-600 active:bg-green-200'
               }`}
               aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
             >
@@ -49,7 +49,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
             </button>
             <button 
               onClick={() => onClone(device)} 
-              className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors" 
+              className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
               title="Clone Device"
               aria-label="Clone device"
             >
@@ -57,14 +57,14 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
             </button>
             <button 
               onClick={() => onEdit(device)} 
-              className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+              className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Edit device"
             >
               <Edit2 size={18} />
             </button>
             <button 
               onClick={() => onDelete(device.id)} 
-              className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+              className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Delete device"
             >
               <Trash2 size={18} />
@@ -76,13 +76,13 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="text-xl font-bold text-gray-900">{device.name}</h3>
+    <div className="bg-white p-4 md:p-6 rounded-lg shadow active:shadow-lg transition-shadow">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 break-words">{device.name}</h3>
             <span 
-              className={`px-3 py-1 rounded-full text-xs font-medium ${
+              className={`px-3 py-1 rounded-full text-xs font-medium self-start ${
                 device.monitoring_enabled 
                   ? 'bg-green-100 text-green-800' 
                   : 'bg-gray-100 text-gray-800'
@@ -92,7 +92,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
             </span>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
             <div>
               <p className="text-gray-600">Type</p>
               <p className="font-medium text-gray-900">{deviceTypeLabel}</p>
@@ -174,13 +174,13 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
           )}
         </div>
         
-        <div className="flex gap-2 ml-4">
+        <div className="flex gap-2 md:ml-4 self-start md:self-auto">
           <button 
             onClick={() => onToggleMonitoring(device)} 
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
               device.monitoring_enabled 
-                ? 'bg-red-100 text-red-600 hover:bg-red-200' 
-                : 'bg-green-100 text-green-600 hover:bg-green-200'
+                ? 'bg-red-100 text-red-600 active:bg-red-200' 
+                : 'bg-green-100 text-green-600 active:bg-green-200'
             }`}
             aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
           >
@@ -188,7 +188,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
           </button>
           <button 
             onClick={() => onClone(device)} 
-            className="p-2 bg-purple-100 text-purple-600 rounded-lg hover:bg-purple-200 transition-colors" 
+            className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
             title="Clone Device"
             aria-label="Clone device"
           >
@@ -196,14 +196,14 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
           </button>
           <button 
             onClick={() => onEdit(device)} 
-            className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+            className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Edit device"
           >
             <Edit2 size={20} />
           </button>
           <button 
             onClick={() => onDelete(device.id)} 
-            className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+            className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Delete device"
           >
             <Trash2 size={20} />
