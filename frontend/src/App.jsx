@@ -33,6 +33,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
   const [error, setError] = useState(null);
+  const [errorDetails, setErrorDetails] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   // Load data on mount and when filter changes
@@ -69,7 +70,8 @@ function App() {
       setDevices(data);
     } catch (err) {
       console.error('Failed to fetch devices:', err);
-      setError('Failed to load devices');
+      setError(err.message || 'Failed to load devices');
+      setErrorDetails(err.details || null);
     } finally {
       setLoading(false);
     }
@@ -126,6 +128,7 @@ function App() {
     } catch (err) {
       console.error('Failed to toggle monitoring:', err);
       setError(err.message || 'Failed to toggle monitoring');
+      setErrorDetails(err.details || null);
     }
   };
 
@@ -141,6 +144,7 @@ function App() {
     } catch (err) {
       console.error('Failed to delete device:', err);
       setError(err.message || 'Failed to delete device');
+      setErrorDetails(err.details || null);
     }
   };
 
@@ -169,7 +173,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full">
-      <ErrorAlert message={error} onClose={() => setError(null)} />
+      <ErrorAlert 
+        message={error} 
+        details={errorDetails}
+        onClose={() => {
+          setError(null);
+          setErrorDetails(null);
+        }} 
+      />
       
       {/* Header */}
       <header className="bg-white shadow overflow-hidden">

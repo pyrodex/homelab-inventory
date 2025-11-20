@@ -6,10 +6,13 @@ from flask_limiter import Limiter
 from marshmallow import ValidationError as MarshmallowValidationError
 from datetime import datetime
 
-from flask import jsonify
 from models import db, Device
 from validators import DeviceSchema
 from exceptions import DatabaseError, ReadOnlyDatabaseError
+from utils.response import (
+    success_response, error_response, validation_error_response,
+    not_found_response, conflict_response
+)
 import logging
 
 devices_bp = Blueprint('devices', __name__)
@@ -33,14 +36,16 @@ def get_devices():
         devices = Device.query.filter_by(device_type=device_type).all()
     else:
         devices = Device.query.all()
-    return jsonify([d.to_dict() for d in devices])
+    return success_response([d.to_dict() for d in devices])
 
 
 @devices_bp.route('/<int:device_id>', methods=['GET'])
 def get_device(device_id):
     """Get a single device by ID"""
-    device = Device.query.get_or_404(device_id)
-    return jsonify(device.to_dict())
+    device = Device.query.get(device_id)
+    if not device:
+        return not_found_response("Device", device_id)
+    return success_response(device.to_dict())
 
 
 @devices_bp.route('', methods=['POST'])
@@ -71,7 +76,7 @@ def create_device():
         validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
         logging.warning(f"Validation error for device creation: {err.messages}. Filtered data: {filtered_data}")
-        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+        return validation_error_response(err.messages)
     
     device = Device(
         name=validated_data['name'],
@@ -91,27 +96,29 @@ def create_device():
     try:
         db.session.add(device)
         db.session.commit()
-        return jsonify(device.to_dict()), 201
+        return success_response(device.to_dict(), "Device created successfully", 201)
     except Exception as e:
         db.session.rollback()
         error_msg = str(e)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
-            return jsonify(ReadOnlyDatabaseError().to_dict()), 500
+            return error_response("Database is read-only", status_code=500, error_code='READONLY_DATABASE')
         logging.error(f"Failed to create device: {error_msg}")
-        return jsonify(DatabaseError("Failed to create device due to an internal error.").to_dict()), 500
+        return error_response("Failed to create device due to an internal error", status_code=500, error_code='DATABASE_ERROR')
 
 
 @devices_bp.route('/<int:device_id>', methods=['PUT'])
 def update_device(device_id):
     """Update an existing device"""
-    device = Device.query.get_or_404(device_id)
+    device = Device.query.get(device_id)
+    if not device:
+        return not_found_response("Device", device_id)
     
     if not request.is_json:
-        return jsonify({'error': 'Content-Type must be application/json'}), 400
+        return error_response('Content-Type must be application/json', status_code=400)
     
     data = request.json
     if not data:
-        return jsonify({'error': 'Request body is required'}), 400
+        return error_response('Request body is required', status_code=400)
     
     # Filter out read-only/computed fields that shouldn't be updated
     # These fields come from the database relationships and computed properties
@@ -139,7 +146,7 @@ def update_device(device_id):
         validated_data = schema.load(filtered_data)
     except MarshmallowValidationError as err:
         logging.warning(f"Validation error for device {device_id} update: {err.messages}. Filtered data: {filtered_data}")
-        return jsonify({'error': 'Validation error', 'details': err.messages}), 400
+        return validation_error_response(err.messages)
     
     for key in ['name', 'device_type', 'ip_address', 'function', 
                 'vendor_id', 'model_id', 'location_id', 'serial_number', 
@@ -156,29 +163,32 @@ def update_device(device_id):
     
     try:
         db.session.commit()
-        return jsonify(device.to_dict())
+        return success_response(device.to_dict(), "Device updated successfully")
     except Exception as e:
         db.session.rollback()
         error_msg = str(e)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
-            return jsonify(ReadOnlyDatabaseError().to_dict()), 500
+            return error_response("Database is read-only", status_code=500, error_code='READONLY_DATABASE')
         logging.error(f"Failed to update device: {error_msg}")
-        return jsonify(DatabaseError("Failed to update device due to an internal error.").to_dict()), 500
+        return error_response("Failed to update device due to an internal error", status_code=500, error_code='DATABASE_ERROR')
 
 
 @devices_bp.route('/<int:device_id>', methods=['DELETE'])
 def delete_device(device_id):
     """Delete a device"""
-    device = Device.query.get_or_404(device_id)
+    device = Device.query.get(device_id)
+    if not device:
+        return not_found_response("Device", device_id)
+    
     try:
         db.session.delete(device)
         db.session.commit()
-        return '', 204
+        return success_response(None, "Device deleted successfully", 200)
     except Exception as e:
         db.session.rollback()
         error_msg = str(e)
         logging.error(f"Error deleting device {device_id}: {error_msg}", exc_info=True)
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
-            return jsonify(ReadOnlyDatabaseError().to_dict()), 500
-        return jsonify(DatabaseError("Failed to delete device due to an internal error.").to_dict()), 500
+            return error_response("Database is read-only", status_code=500, error_code='READONLY_DATABASE')
+        return error_response("Failed to delete device due to an internal error", status_code=500, error_code='DATABASE_ERROR')
 

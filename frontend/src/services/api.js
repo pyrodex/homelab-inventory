@@ -18,15 +18,30 @@ const apiRequest = async (endpoint, options = {}) => {
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-    }
-    
     // Handle non-JSON responses (like blobs)
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
-      return await response.json();
+      const data = await response.json();
+      
+      // Check for standardized error response
+      if (!response.ok) {
+        const error = new Error(data.error || data.message || `HTTP error! status: ${response.status}`);
+        error.status = response.status;
+        error.details = data.details || null;
+        error.errorCode = data.error_code || null;
+        throw error;
+      }
+      
+      // Handle standardized success response
+      if (data.success !== undefined) {
+        return data.data !== undefined ? data.data : data;
+      }
+      
+      return data;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
     return response;

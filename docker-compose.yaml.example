@@ -12,6 +12,14 @@ services:
       - DATABASE_PATH=/app/data/homelab.db
       - PROMETHEUS_EXPORT_PATH=/app/prometheus_targets
       - CORS_ORIGINS=*
+      - BACKUP_DIRECTORY=/app/data/backups
+      - BACKUP_RETENTION_DAYS=30
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     networks:
       - homelab-network
@@ -23,7 +31,14 @@ services:
     ports:
       - 5000:80
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
     networks:
       - homelab-network

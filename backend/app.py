@@ -10,6 +10,7 @@ from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
 import logging
 import os
+import sys
 
 from config import config
 from models import db
@@ -29,7 +30,14 @@ app = Flask(__name__)
 # Load configuration
 config_name = os.environ.get('FLASK_ENV', 'production')
 app.config.from_object(config[config_name])
-config[config_name].init_app(app)
+
+# Initialize app with config (validates environment)
+try:
+    config[config_name].init_app(app)
+except ValueError as e:
+    logging.error(f"Configuration error: {e}")
+    logging.error("Application startup aborted due to configuration errors")
+    sys.exit(1)
 
 # Initialize logging
 logging.basicConfig(
@@ -74,29 +82,32 @@ limiter = Limiter(
 # Rate limit error handler
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    return jsonify({
-        'error': 'Rate limit exceeded',
-        'message': f'Too many requests. Please try again later. Limit: {e.description}'
-    }), 429
+    from utils.response import rate_limit_response
+    return rate_limit_response(f'Too many requests. Please try again later. Limit: {e.description}')
 
 # Custom error handlers
 @app.errorhandler(HomelabInventoryError)
 def handle_homelab_error(error):
     """Handle custom application errors"""
-    response = jsonify(error.to_dict())
-    response.status_code = error.status_code
-    return response
+    from utils.response import error_response
+    return error_response(
+        error.message,
+        status_code=error.status_code,
+        error_code=getattr(error, 'error_code', None)
+    )
 
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""
-    return jsonify({'error': 'Not Found', 'message': 'The requested resource was not found'}), 404
+    from utils.response import not_found_response
+    return not_found_response()
 
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors"""
     logging.error(f"Internal server error: {error}", exc_info=True)
-    return jsonify({'error': 'Internal Server Error', 'message': 'An internal error occurred'}), 500
+    from utils.response import server_error_response
+    return server_error_response("An internal error occurred")
 
 # Register routes
 register_device_routes(app, limiter)
