@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -11,6 +16,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* iOS safe area support */
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+#root {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 code {
@@ -56,9 +70,18 @@ code {
 
 /* Mobile-specific styles */
 @media (max-width: 768px) {
-  /* Prevent horizontal scroll */
-  body {
+  /* Prevent horizontal scroll - ensure all containers respect viewport */
+  html, body, #root {
     overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+    position: relative;
+  }
+  
+  /* Prevent common elements from overflowing */
+  img, video, iframe, embed, object {
+    max-width: 100%;
+    height: auto;
   }
   
   /* Improve modal scrolling on iOS */

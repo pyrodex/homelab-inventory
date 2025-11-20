@@ -125,51 +125,51 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden w-full max-w-full">
       <ErrorAlert message={error} onClose={() => setError(null)} />
       
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
+      <header className="bg-white shadow overflow-hidden">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6 w-full">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Homelab Inventory</h1>
-              <p className="text-sm md:text-base text-gray-600 mt-1">Manage your infrastructure monitoring</p>
+            <div className="min-w-0 flex-shrink">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 truncate">Homelab Inventory</h1>
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1">Manage your infrastructure monitoring</p>
             </div>
-            <div className="grid grid-cols-2 md:flex md:gap-3 gap-2">
+            <div className="grid grid-cols-2 md:flex md:gap-3 gap-2 w-full md:w-auto flex-shrink-0">
               <button 
                 onClick={() => setShowAdminModal(true)} 
-                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
                 aria-label="Open admin panel"
               >
-                <Settings size={18} className="md:w-5 md:h-5" />
-                <span className="text-sm md:text-base">Admin</span>
+                <Settings size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
+                <span className="truncate">Admin</span>
               </button>
               <button 
                 onClick={() => handleExportPrometheus('write')} 
-                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
                 aria-label="Write Prometheus files"
               >
-                <Check size={18} className="md:w-5 md:h-5" />
-                <span className="hidden md:inline text-sm md:text-base">Write Prometheus Files</span>
-                <span className="md:hidden text-sm">Write</span>
+                <Check size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
+                <span className="hidden md:inline truncate">Write Prometheus Files</span>
+                <span className="md:hidden truncate">Write</span>
               </button>
               <button 
                 onClick={() => handleExportPrometheus('download')} 
-                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
                 aria-label="Download configuration"
               >
-                <Download size={18} className="md:w-5 md:h-5" />
-                <span className="hidden md:inline text-sm md:text-base">Download Config</span>
-                <span className="md:hidden text-sm">Download</span>
+                <Download size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
+                <span className="hidden md:inline truncate">Download Config</span>
+                <span className="md:hidden truncate">Download</span>
               </button>
               <button 
                 onClick={() => setShowAddModal(true)} 
-                className="flex items-center justify-center gap-2 px-3 md:px-4 py-2.5 md:py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation col-span-2 md:col-span-1"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] col-span-2 md:col-span-1 text-xs sm:text-sm md:text-base"
                 aria-label="Add new device"
               >
-                <Plus size={18} className="md:w-5 md:h-5" />
-                <span className="text-sm md:text-base">Add Device</span>
+                <Plus size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
+                <span className="truncate">Add Device</span>
               </button>
             </div>
           </div>
