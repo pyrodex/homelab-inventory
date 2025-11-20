@@ -7,6 +7,7 @@ import DeviceList from './components/devices/DeviceList/DeviceList';
 import DeviceModal from './components/devices/DeviceModal/DeviceModal';
 import AdminModal from './components/admin/AdminModal/AdminModal';
 import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOperationsModal';
+import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 
 // Services
 import { deviceApi, statsApi, prometheusApi } from './services/api';
@@ -23,6 +24,7 @@ function App() {
   const [stats, setStats] = useState(null);
   const [selectedType, setSelectedType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [cloningDevice, setCloningDevice] = useState(null);
@@ -35,12 +37,34 @@ function App() {
 
   // Load data on mount and when filter changes
   useEffect(() => {
-    fetchDevices();
+    if (searchResults === null) {
+      fetchDevices();
+    }
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedType]);
+
+  // Update devices when search results change
+  useEffect(() => {
+    if (searchResults) {
+      let filtered = searchResults;
+      if (selectedType !== 'all') {
+        filtered = searchResults.filter(d => d.device_type === selectedType);
+      }
+      setDevices(filtered);
+    } else if (searchResults === null) {
+      // Reset to default list when search is cleared
+      fetchDevices();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchResults, selectedType]);
 
   const fetchDevices = async () => {
     try {
+      // If search results are active, don't fetch default list
+      if (searchResults !== null) {
+        return;
+      }
       const data = await deviceApi.getAll(selectedType === 'all' ? null : selectedType);
       setDevices(data);
     } catch (err) {
@@ -48,6 +72,22 @@ function App() {
       setError('Failed to load devices');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearchResults = (results) => {
+    setSearchResults(results);
+    if (results) {
+      // Filter by device type if not 'all'
+      let filtered = results;
+      if (selectedType !== 'all') {
+        filtered = results.filter(d => d.device_type === selectedType);
+      }
+      setDevices(filtered);
+      setLoading(false);
+    } else {
+      // No search active, reset to null so default fetch happens
+      setSearchResults(null);
     }
   };
 
@@ -223,17 +263,27 @@ function App() {
         </div>
       )}
 
-      {/* Filters */}
+      {/* Filters and Search */}
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="bg-white p-4 rounded-lg shadow">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div className="bg-white p-4 rounded-lg shadow space-y-4">
+          {/* Advanced Search Component */}
+          <AdvancedSearch
+            onResults={handleSearchResults}
+            onError={setError}
+          />
+          
+          {/* Device Type Filter and View Mode */}
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pt-2 border-t border-gray-200">
             <div className="flex-1 w-full md:w-auto">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Filter by Device Type
               </label>
               <select 
                 value={selectedType} 
-                onChange={(e) => setSelectedType(e.target.value)} 
+                onChange={(e) => {
+                  setSelectedType(e.target.value);
+                  setSearchResults(null); // Clear search when changing type filter
+                }} 
                 className="w-full md:w-64 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
               >
                 <option value="all">All Devices</option>
@@ -241,18 +291,6 @@ function App() {
                   <option key={type.value} value={type.value}>{type.label}</option>
                 ))}
               </select>
-            </div>
-            <div className="flex-1 w-full md:max-w-md">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search Devices
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, IP, function..."
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
-              />
             </div>
             <div className="flex gap-2 self-start md:self-auto">
               <button 
@@ -298,13 +336,16 @@ function App() {
         ) : (
           <DeviceList 
             devices={devices} 
-            searchTerm={searchTerm} 
+            searchTerm={searchResults ? '' : searchTerm} 
             viewMode={viewMode} 
             onToggleMonitoring={toggleMonitoring} 
             onEdit={setEditingDevice} 
             onClone={handleClone} 
             onDelete={deleteDevice} 
-            onClearSearch={() => setSearchTerm('')} 
+            onClearSearch={() => {
+              setSearchTerm('');
+              setSearchResults(null);
+            }} 
           />
         )}
       </main>

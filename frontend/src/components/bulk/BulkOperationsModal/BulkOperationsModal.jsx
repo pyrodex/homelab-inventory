@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Upload, Download, Trash2, FileText, FileJson } from 'lucide-react';
 import { bulkApi } from '../../../services/api';
 import { downloadBlob } from '../../../utils/helpers';
+import { DEVICE_TYPES } from '../../../constants/deviceTypes';
 
 function BulkOperationsModal({ onClose, onSuccess, onError }) {
   const [activeTab, setActiveTab] = useState('import');
@@ -289,10 +290,9 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
                 >
                   <option value="all">All Devices</option>
-                  <option value="linux_server_physical">Linux Server (Physical)</option>
-                  <option value="linux_server_virtual">Linux Server (Virtual)</option>
-                  <option value="network_switch">Network Switch</option>
-                  <option value="wireless_ap">Wireless AP</option>
+                  {DEVICE_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
                 </select>
               </div>
 
