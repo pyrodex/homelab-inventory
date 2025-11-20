@@ -102,11 +102,30 @@ class DeviceSchema(Schema):
     
     @pre_load
     def sanitize_fields(self, data, **kwargs):
-        """Sanitize string fields"""
+        """Sanitize string fields and handle empty strings"""
         if isinstance(data, dict):
-            for key, value in data.items():
+            # Optional fields that can be None
+            optional_string_fields = ['ip_address', 'function', 'serial_number', 'networks', 
+                                     'interface_type', 'poe_standards']
+            optional_int_fields = ['vendor_id', 'model_id', 'location_id']
+            
+            for key, value in list(data.items()):
                 if isinstance(value, str):
-                    data[key] = sanitize_string(value)
+                    sanitized = sanitize_string(value)
+                    # Convert empty strings to None for optional fields
+                    if sanitized == '' and key in optional_string_fields:
+                        data[key] = None
+                    elif sanitized == '' and key in optional_int_fields:
+                        # Empty string for integer fields should be None
+                        data[key] = None
+                    else:
+                        data[key] = sanitized
+                elif value == '' and key in optional_int_fields:
+                    # Handle empty string for integer fields
+                    data[key] = None
+                elif value == '' and key in optional_string_fields:
+                    # Handle empty string for optional string fields
+                    data[key] = None
         return data
 
 
@@ -126,11 +145,17 @@ class MonitorSchema(Schema):
     
     @pre_load
     def sanitize_fields(self, data, **kwargs):
-        """Sanitize string fields"""
+        """Sanitize string fields and handle empty strings"""
         if isinstance(data, dict):
+            optional_fields = ['endpoint', 'notes']
             for key, value in data.items():
                 if isinstance(value, str):
-                    data[key] = sanitize_string(value)
+                    sanitized = sanitize_string(value)
+                    # Convert empty strings to None for optional fields
+                    if sanitized == '' and key in optional_fields:
+                        data[key] = None
+                    else:
+                        data[key] = sanitized
         return data
 
 
