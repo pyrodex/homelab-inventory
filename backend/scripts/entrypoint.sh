@@ -13,7 +13,7 @@ mkdir -p "${BACKUP_DIRECTORY:-/app/data/backups}"
     echo "DATABASE_PATH=${DATABASE_PATH:-/app/data/homelab.db}"
     echo "BACKUP_DIRECTORY=${BACKUP_DIRECTORY:-/app/data/backups}"
     echo "BACKUP_RETENTION_DAYS=${BACKUP_RETENTION_DAYS:-30}"
-    echo "${BACKUP_SCHEDULE} python /app/scripts/backup_db.py >> /proc/1/fd/1 2>&1"
+    echo "${BACKUP_SCHEDULE} /usr/local/bin/python3 /app/scripts/backup_db.py >> /proc/1/fd/1 2>&1"
 } | crontab -
 
 # Start cron daemon
