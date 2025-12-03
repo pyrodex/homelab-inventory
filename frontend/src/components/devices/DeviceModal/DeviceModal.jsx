@@ -301,7 +301,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 type="text" 
                 value={formData.function} 
                 onChange={(e) => setFormData({ ...formData, function: e.target.value })} 
-                placeholder="e.g., Web Server, Storage" 
+                placeholder="Provide device function..." 
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 
               />
