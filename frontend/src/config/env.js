@@ -49,7 +49,7 @@ export const APP_CONFIG = {
 export const VALIDATION = {
   maxNameLength: 100,
   maxSerialNumberLength: 100,
-  maxFunctionLength: 200,
+  maxDeviceFunctionLength: 200,
   minNameLength: 2,
   portMin: 1,
   portMax: 65535,

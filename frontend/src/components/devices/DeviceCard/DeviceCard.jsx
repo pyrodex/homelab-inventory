@@ -4,6 +4,7 @@ import { DEVICE_TYPES } from '../../../constants/deviceTypes';
 
 function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onDelete }) {
   const deviceTypeLabel = DEVICE_TYPES.find(t => t.value === device.device_type)?.label || device.device_type;
+  const deviceFunction = device.deviceFunction || '';
 
   if (viewMode === 'condensed') {
     return (
@@ -103,10 +104,10 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
                 <p className="font-medium text-gray-900">{device.ip_address}</p>
               </div>
             )}
-            {device.function && (
+            {deviceFunction && (
               <div>
-                <p className="text-gray-600">Function</p>
-                <p className="font-medium text-gray-900">{device.function}</p>
+                <p className="text-gray-600">Device Function</p>
+                <p className="font-medium text-gray-900">{deviceFunction}</p>
               </div>
             )}
             {device.networks && (

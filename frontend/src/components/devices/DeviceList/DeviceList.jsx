@@ -18,11 +18,12 @@ function DeviceList({
     
     const search = searchTerm.toLowerCase();
     const deviceTypeLabel = DEVICE_TYPES.find(t => t.value === device.device_type)?.label || '';
+    const deviceFunction = device.deviceFunction || '';
     
     return (
       device.name?.toLowerCase().includes(search) ||
       device.ip_address?.toLowerCase().includes(search) ||
-      device.function?.toLowerCase().includes(search) ||
+      deviceFunction.toLowerCase().includes(search) ||
       device.vendor_name?.toLowerCase().includes(search) ||
       device.model_name?.toLowerCase().includes(search) ||
       device.location_name?.toLowerCase().includes(search) ||

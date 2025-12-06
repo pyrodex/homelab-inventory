@@ -10,21 +10,23 @@ import {
 } from '../../../constants/deviceTypes';
 
 function DeviceModal({ device, onClose, onSave, onError }) {
-  const [formData, setFormData] = useState(device || {
-    name: '', 
-    device_type: 'linux_server_physical', 
-    ip_address: '', 
-    function: '',
-    vendor_id: '', 
-    model_id: '', 
-    location_id: '', 
-    serial_number: '', 
-    networks: 'LAN',
-    interface_type: '', 
-    poe_powered: false, 
-    poe_standards: '', 
-    monitoring_enabled: true
+  const normalizeDevice = (deviceData) => ({
+    name: deviceData?.name || '', 
+    device_type: deviceData?.device_type || 'linux_server_physical', 
+    ip_address: deviceData?.ip_address || '', 
+    deviceFunction: deviceData?.deviceFunction ?? deviceData?.function ?? '',
+    vendor_id: deviceData?.vendor_id ?? '', 
+    model_id: deviceData?.model_id ?? '', 
+    location_id: deviceData?.location_id ?? '', 
+    serial_number: deviceData?.serial_number || '', 
+    networks: deviceData?.networks || 'LAN',
+    interface_type: deviceData?.interface_type || '', 
+    poe_powered: deviceData?.poe_powered ?? false, 
+    poe_standards: deviceData?.poe_standards || '', 
+    monitoring_enabled: deviceData?.monitoring_enabled ?? true
   });
+
+  const [formData, setFormData] = useState(() => normalizeDevice(device));
 
   const [monitors, setMonitors] = useState(
     device?.monitors 
@@ -153,7 +155,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     if (!formData.name?.trim()) missingFields.push('Device Name');
     if (!formData.ip_address?.trim()) missingFields.push('Address');
     if (!formData.device_type) missingFields.push('Device Type');
-    if (!formData.function?.trim()) missingFields.push('Function');
+    if (!formData.deviceFunction?.trim()) missingFields.push('Device Function');
     if (!formData.vendor_id) missingFields.push('Vendor');
     if (!formData.model_id) missingFields.push('Model');
     if (!formData.location_id) missingFields.push('Location');
@@ -295,12 +297,12 @@ function DeviceModal({ device, onClose, onSave, onError }) {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Function *
+                Device Function *
               </label>
               <input 
                 type="text" 
-                value={formData.function} 
-                onChange={(e) => setFormData({ ...formData, function: e.target.value })} 
+                value={formData.deviceFunction} 
+                onChange={(e) => setFormData({ ...formData, deviceFunction: e.target.value })} 
                 placeholder="Provide device function..." 
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                 required 

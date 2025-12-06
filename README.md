@@ -11,7 +11,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ### Device Management
 - **Comprehensive Device Tracking**: Track physical and virtual servers, network switches, wireless access points, IP cameras, IoT devices, and more
-- **Rich Device Information**: Store device names, IP addresses, functions, vendors, models, locations, serial numbers, and network assignments
+- **Rich Device Information**: Store device names, IP addresses, device functions, vendors, models, locations, serial numbers, and network assignments
 - **Multiple Device Types**: Support for 13+ device types including Linux/FreeBSD servers, network equipment, cameras, and specialized devices
 - **Location Organization**: Organize devices by physical or logical locations (e.g., Data Center, Office, Rack 1)
 - **Vendor & Model Management**: Maintain a catalog of vendors and models for consistent device tracking
@@ -52,7 +52,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Error Handling**: Detailed import/export results showing successful and failed operations
 
 ### Advanced Search & Filtering
-- **Multi-field Search**: Search across name, IP address, function, serial number, networks, interface types, and PoE standards
+- **Multi-field Search**: Search across name, IP address, device function, serial number, networks, interface types, and PoE standards
 - **Advanced Filters**: Filter by device type, vendor, model, location, monitoring status, PoE powered status, and IP address presence
 - **Filter Chips**: Visual representation of active filters with easy removal
 - **Real-time Results**: Instant search results with debouncing for optimal performance
@@ -336,7 +336,7 @@ scrape_configs:
    - Device Name
    - Device Type
    - Address (IP address, hostname, or URL)
-   - Function
+   - Device Function
    - Vendor (create new if needed)
    - Model (create new if needed)
    - Location (create new if needed)
@@ -376,7 +376,7 @@ The export organizes targets by monitor type:
 
 ### Searching and Filtering
 
-- **Quick Search**: Use the search box to find devices by name, IP, function, serial number, networks, interface types, or PoE standards
+- **Quick Search**: Use the search box to find devices by name, IP, device function, serial number, networks, interface types, or PoE standards
 - **Advanced Search**: Click the "Filters" button to expand advanced filtering options:
   - Filter by device type, vendor, model, or location
   - Filter by monitoring status (enabled/disabled)
@@ -391,7 +391,7 @@ The export organizes targets by monitor type:
 
 - **Bulk Import**: 
   - Import devices from JSON array or CSV file
-  - CSV format: name, device_type, ip_address, function, vendor, model, location, serial_number, networks, interface_type, poe_powered, poe_standards, monitoring_enabled
+  - CSV format: name, device_type, ip_address, deviceFunction, vendor, model, location, serial_number, networks, interface_type, poe_powered, poe_standards, monitoring_enabled
   - JSON format: Array of device objects matching the API schema
   - Results show successful imports and failed items with error details
   
@@ -534,7 +534,7 @@ curl -X POST http://localhost:5000/api/devices \
     "name": "Web Server 01",
     "device_type": "linux_server_physical",
     "ip_address": "192.168.1.10",
-    "function": "Web Server",
+    "deviceFunction": "Web Server",
     "vendor_id": 1,
     "model_id": 1,
     "location_id": 1,
