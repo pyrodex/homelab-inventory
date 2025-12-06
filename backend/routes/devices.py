@@ -57,6 +57,10 @@ def create_device():
     data = request.json
     if not data:
         return jsonify({'error': 'Request body is required'}), 400
+
+    # Backwards compatibility: map legacy field name
+    if 'function' in data and 'deviceFunction' not in data:
+        data['deviceFunction'] = data['function']
     
     # Filter out read-only/computed fields that shouldn't be in create requests
     # These fields come from the database relationships and computed properties
@@ -64,7 +68,7 @@ def create_device():
                       'location_name', 'monitors']
     
     # Only keep fields that are actually creatable
-    creatable_fields = ['name', 'device_type', 'ip_address', 'function', 'vendor_id', 
+    creatable_fields = ['name', 'device_type', 'ip_address', 'deviceFunction', 'vendor_id', 
                        'model_id', 'location_id', 'serial_number', 'networks', 
                        'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
     
@@ -82,7 +86,7 @@ def create_device():
         name=validated_data['name'],
         device_type=validated_data['device_type'],
         ip_address=validated_data.get('ip_address'),
-        function=validated_data.get('function'),
+        device_function=validated_data.get('device_function'),
         vendor_id=validated_data.get('vendor_id'),
         model_id=validated_data.get('model_id'),
         location_id=validated_data.get('location_id'),
@@ -119,6 +123,10 @@ def update_device(device_id):
     data = request.json
     if not data:
         return error_response('Request body is required', status_code=400)
+
+    # Backwards compatibility: map legacy field name
+    if 'function' in data and 'deviceFunction' not in data:
+        data['deviceFunction'] = data['function']
     
     # Filter out read-only/computed fields that shouldn't be updated
     # These fields come from the database relationships and computed properties
@@ -126,7 +134,7 @@ def update_device(device_id):
                       'location_name', 'monitors']
     
     # Only keep fields that are actually updatable
-    updatable_fields = ['name', 'device_type', 'ip_address', 'function', 'vendor_id', 
+    updatable_fields = ['name', 'device_type', 'ip_address', 'deviceFunction', 'vendor_id', 
                        'model_id', 'location_id', 'serial_number', 'networks', 
                        'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
     
@@ -148,7 +156,7 @@ def update_device(device_id):
         logging.warning(f"Validation error for device {device_id} update: {err.messages}. Filtered data: {filtered_data}")
         return validation_error_response(err.messages)
     
-    for key in ['name', 'device_type', 'ip_address', 'function', 
+    for key in ['name', 'device_type', 'ip_address', 'device_function', 
                 'vendor_id', 'model_id', 'location_id', 'serial_number', 
                 'networks', 'interface_type', 'poe_standards']:
         if key in validated_data:

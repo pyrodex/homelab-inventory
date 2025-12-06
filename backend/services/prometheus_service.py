@@ -81,7 +81,7 @@ def build_prometheus_targets(devices):
                 'device_name': device.name,
                 'device_type': device.device_type,
                 'ip_address': device.ip_address or '',
-                'function': device.function or '',
+                'deviceFunction': device.device_function or '',
                 'networks': device.networks or '',
                 'vendor': device.vendor_obj.name if device.vendor_obj else '',
                 'model': device.model_obj.name if device.model_obj else '',

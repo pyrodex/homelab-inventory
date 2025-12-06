@@ -67,7 +67,7 @@ def advanced_search():
             search_filter = or_(
                 Device.name.ilike(f'%{search_term}%'),
                 Device.ip_address.ilike(f'%{search_term}%'),
-                Device.function.ilike(f'%{search_term}%'),
+                Device.device_function.ilike(f'%{search_term}%'),
                 Device.serial_number.ilike(f'%{search_term}%'),
                 Device.networks.ilike(f'%{search_term}%'),
                 Device.interface_type.ilike(f'%{search_term}%'),

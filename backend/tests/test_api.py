@@ -41,7 +41,7 @@ def sample_data(app):
             name="Test Device",
             device_type="linux_server_physical",
             ip_address="192.168.1.1",
-            function="Test Server",
+            device_function="Test Server",
             vendor_id=vendor.id,
             location_id=location.id,
             serial_number="SN123456"
@@ -90,7 +90,7 @@ def test_create_device(client, sample_data):
         'name': 'New Device',
         'device_type': 'linux_server_virtual',
         'ip_address': '192.168.1.2',
-        'function': 'Web Server',
+        'deviceFunction': 'Web Server',
         'vendor_id': sample_data['vendor_id'],
         'location_id': sample_data['location_id'],
         'serial_number': 'SN789012'

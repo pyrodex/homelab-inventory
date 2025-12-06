@@ -70,7 +70,8 @@ class Device(db.Model):
     name = db.Column(db.String(100), nullable=False, index=True)
     device_type = db.Column(db.String(50), nullable=False, index=True)
     ip_address = db.Column(db.String(100), index=True)
-    function = db.Column(db.String(200), index=True)
+    # Keep underlying column name for compatibility, expose attribute as device_function
+    device_function = db.Column('function', db.String(200), index=True)
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=True, index=True)
     model_id = db.Column(db.Integer, db.ForeignKey('model.id'), nullable=True, index=True)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True, index=True)
@@ -97,7 +98,7 @@ class Device(db.Model):
             'name': self.name,
             'device_type': self.device_type,
             'ip_address': self.ip_address,
-            'function': self.function,
+            'deviceFunction': self.device_function,
             'vendor_id': self.vendor_id,
             'vendor_name': self.vendor_obj.name if self.vendor_obj else None,
             'model_id': self.model_id,
@@ -114,6 +115,15 @@ class Device(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
+
+    # Backwards-compatible alias if older code references .function
+    @property
+    def function(self):
+        return self.device_function
+
+    @function.setter
+    def function(self, value):
+        self.device_function = value
 
 
 class Monitor(db.Model):

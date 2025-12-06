@@ -95,11 +95,12 @@ def bulk_import_devices():
             for idx, row in enumerate(csv_reader):
                 try:
                     # Convert CSV row to device data
+                    function_value = (row.get('deviceFunction') or row.get('function') or '').strip()
                     device_data = {
                         'name': row.get('name', '').strip(),
                         'device_type': row.get('device_type', '').strip(),
                         'ip_address': row.get('ip_address', '').strip() or None,
-                        'function': row.get('function', '').strip() or None,
+                        'deviceFunction': function_value or None,
                         'serial_number': row.get('serial_number', '').strip() or None,
                         'networks': row.get('networks', '').strip() or None,
                         'interface_type': row.get('interface_type', '').strip() or None,
@@ -175,7 +176,7 @@ def bulk_export_devices():
         # Generate CSV
         output = io.StringIO()
         fieldnames = [
-            'id', 'name', 'device_type', 'ip_address', 'function', 'vendor', 'model',
+            'id', 'name', 'device_type', 'ip_address', 'deviceFunction', 'vendor', 'model',
             'location', 'serial_number', 'networks', 'interface_type', 
             'poe_powered', 'poe_standards', 'monitoring_enabled', 'created_at', 'updated_at'
         ]
@@ -188,7 +189,7 @@ def bulk_export_devices():
                 'name': device.name,
                 'device_type': device.device_type,
                 'ip_address': device.ip_address or '',
-                'function': device.function or '',
+                'deviceFunction': device.device_function or '',
                 'vendor': device.vendor_obj.name if device.vendor_obj else '',
                 'model': device.model_obj.name if device.model_obj else '',
                 'location': device.location_obj.name if device.location_obj else '',

@@ -89,7 +89,11 @@ class DeviceSchema(Schema):
         ])
     )
     ip_address = fields.Str(allow_none=True, validate=validate_ip_or_hostname)
-    function = fields.Str(allow_none=True, validate=validate.Length(max=200))
+    device_function = fields.Str(
+        data_key='deviceFunction',
+        allow_none=True,
+        validate=validate.Length(max=200)
+    )
     vendor_id = fields.Int(allow_none=True)
     model_id = fields.Int(allow_none=True)
     location_id = fields.Int(allow_none=True)
@@ -104,8 +108,12 @@ class DeviceSchema(Schema):
     def sanitize_fields(self, data, **kwargs):
         """Sanitize string fields and handle empty strings"""
         if isinstance(data, dict):
+            # Map legacy field name to new schema key
+            if 'function' in data and 'deviceFunction' not in data:
+                data['deviceFunction'] = data['function']
+
             # Optional fields that can be None
-            optional_string_fields = ['ip_address', 'function', 'serial_number', 'networks', 
+            optional_string_fields = ['ip_address', 'deviceFunction', 'serial_number', 'networks', 
                                      'interface_type', 'poe_standards']
             optional_int_fields = ['vendor_id', 'model_id', 'location_id']
             
