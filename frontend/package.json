@@ -4,6 +4,9 @@
   "description": "Simple React/Flask tool to help manage homelab Inventory and Prometheus monitoring",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

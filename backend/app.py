@@ -6,7 +6,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import logging
 import os
@@ -125,50 +125,19 @@ def health_check():
     """Health check endpoint"""
     return jsonify({'status': 'healthy'}), 200
 
-# Initialize database
 def init_database():
-    """Initialize database and check/update schema"""
+    """Initialize database for brand new installs; migrations should handle upgrades."""
     with app.app_context():
         inspector = db.inspect(db.engine)
         existing_tables = inspector.get_table_names()
-        
+
         if existing_tables:
-            logging.info(f"Found existing database with tables: {existing_tables}")
-            
-            required_tables = ['vendor', 'model', 'location', 'device', 'monitor']
-            missing_tables = [table for table in required_tables if table not in existing_tables]
-            
-            if missing_tables:
-                logging.info(f"Missing tables detected: {missing_tables}")
-                logging.info("Creating missing tables...")
-                db.create_all()
-                logging.info("Missing tables created successfully!")
-            else:
-                logging.info("All required tables exist.")
-                logging.info("Checking for schema updates...")
-                
-                # Check Device table for new columns
-                device_columns = [col['name'] for col in inspector.get_columns('device')]
-                
-                if 'location_id' not in device_columns:
-                    logging.info("Adding location_id column to device table...")
-                    with db.engine.connect() as conn:
-                        conn.execute(text('ALTER TABLE device ADD COLUMN location_id INTEGER'))
-                        conn.commit()
-                    logging.info("location_id column added successfully!")
-                
-                if 'poe_standards' not in device_columns:
-                    logging.info("Adding poe_standards column to device table...")
-                    with db.engine.connect() as conn:
-                        conn.execute(text('ALTER TABLE device ADD COLUMN poe_standards VARCHAR(200)'))
-                        conn.commit()
-                    logging.info("poe_standards column added successfully!")
-                
-                logging.info("Schema check complete.")
-        else:
-            logging.info("No existing database found. Creating new database...")
-            db.create_all()
-            logging.info("Database created successfully!")
+            logging.info("Existing database detected; skipping create_all() (use migrations for changes).")
+            return
+
+        logging.info("No existing database found. Creating new database...")
+        db.create_all()
+        logging.info("Database created successfully!")
 
 if __name__ == '__main__':
     init_database()

@@ -157,7 +157,7 @@ Before you begin, ensure you have the following installed:
 - **Git** (for cloning the repository)
 
 For local development:
-- **Node.js** (version 18 or later) and npm
+- **Node.js** (version 20 or later recommended; Docker uses Node 22) and npm
 - **Python** (version 3.13 or later) and pip
 
 ## 🚀 Quick Start
@@ -261,6 +261,7 @@ The application uses pre-built container images from GitHub Container Registry, 
 | `FLASK_ENV` | Flask environment (development/production) | `production` |
 | `DATABASE_PATH` | Path to SQLite database file | `/app/data/homelab.db` |
 | `PROMETHEUS_EXPORT_PATH` | Directory for Prometheus config exports | `/app/prometheus_targets` |
+| `RATELIMIT_STORAGE_URL` | Rate limit storage (use Redis/Memcached for prod) | `memory://` |
 | `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
 | `BACKUP_DIRECTORY` | Directory for database backups | `/app/data/backups` |
 | `BACKUP_RETENTION_DAYS` | Number of days to keep backups before cleanup | `30` |
@@ -279,6 +280,11 @@ Edit `docker-compose.yaml` to customize:
 ### Database
 
 The application uses SQLite by default, stored in the `data/` directory. The database is automatically created on first run.
+
+**Schema management (migrations):**
+- Database creation for a brand-new environment is automatic (`db.create_all()` on first run).
+- Ongoing schema changes should be applied with Flask-Migrate/Alembic (`flask db upgrade`). Runtime ad-hoc ALTER TABLEs have been removed to avoid drift and race conditions.
+- Keep migration scripts under `backend/migrations/versions/` and run `flask db migrate -m "..."` after model changes.
 
 **Database Migrations:**
 - The project uses Flask-Migrate for schema versioning
@@ -989,7 +995,7 @@ Ensure volumes are properly mounted:
 - **Database**: SQLite database should be stored in a secure location with proper file permissions
 - **Network**: Use a reverse proxy (nginx, Traefik) with SSL/TLS for production
 - **Authentication**: Consider adding authentication for production use (not currently implemented)
-- **Rate Limiting Storage**: For production with multiple instances, use Redis instead of in-memory storage
+- **Rate Limiting Storage**: For production or multi-instance deployments, configure `RATELIMIT_STORAGE_URL` to Redis/Memcached instead of the in-memory default
 - **Secrets Management**: Use environment variables or secrets manager for sensitive configuration
 
 ## 🤝 Contributing

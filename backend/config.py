@@ -103,6 +103,9 @@ class Config:
                 raise
             else:
                 logger.warning(f"Environment validation failed: {e}")
+        # Warn if rate limiting storage is non-persistent in production
+        if app.config.get('FLASK_ENV') == 'production' and app.config.get('RATELIMIT_STORAGE_URL', '').startswith('memory://'):
+            logger.warning("RATELIMIT_STORAGE_URL is memory:// in production; use Redis/Memcached for durability.")
 
 
 class DevelopmentConfig(Config):
