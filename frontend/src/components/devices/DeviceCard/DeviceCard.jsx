@@ -1,10 +1,16 @@
-import React from 'react';
-import { X, Check, Copy, Edit2, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Check, Copy, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { DEVICE_TYPES } from '../../../constants/deviceTypes';
 
 function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onDelete }) {
   const deviceTypeLabel = DEVICE_TYPES.find(t => t.value === device.device_type)?.label || device.device_type;
   const deviceFunction = device.deviceFunction || '';
+  const [actionsOpen, setActionsOpen] = useState(false);
+
+  const handleAction = (callback) => {
+    callback(device);
+    setActionsOpen(false);
+  };
 
   if (viewMode === 'condensed') {
     return (
@@ -36,40 +42,87 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
               </div>
             </div>
           </div>
-          <div className="flex gap-2 md:ml-4">
-            <button 
-              onClick={() => onToggleMonitoring(device)} 
-              className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                device.monitoring_enabled 
-                  ? 'bg-red-100 text-red-600 active:bg-red-200' 
-                  : 'bg-green-100 text-green-600 active:bg-green-200'
-              }`}
-              aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
-            >
-              {device.monitoring_enabled ? <X size={18} /> : <Check size={18} />}
-            </button>
-            <button 
-              onClick={() => onClone(device)} 
-              className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
-              title="Clone Device"
-              aria-label="Clone device"
-            >
-              <Copy size={18} />
-            </button>
-            <button 
-              onClick={() => onEdit(device)} 
-              className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-              aria-label="Edit device"
-            >
-              <Edit2 size={18} />
-            </button>
-            <button 
-              onClick={() => onDelete(device.id)} 
-              className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-              aria-label="Delete device"
-            >
-              <Trash2 size={18} />
-            </button>
+          <div className="flex gap-2 md:ml-4 items-center">
+            {/* Mobile menu */}
+            <div className="relative md:hidden">
+              <button
+                onClick={() => setActionsOpen(!actionsOpen)}
+                className="p-2.5 bg-gray-200 text-gray-700 rounded-lg active:bg-gray-300 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-haspopup="true"
+                aria-expanded={actionsOpen}
+              >
+                <MoreVertical size={18} />
+              </button>
+              {actionsOpen && (
+                <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg w-44 z-10">
+                  <button 
+                    onClick={() => handleAction(onToggleMonitoring)} 
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                  >
+                    <span>{device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}</span>
+                    {device.monitoring_enabled ? <X size={14} /> : <Check size={14} />}
+                  </button>
+                  <button 
+                    onClick={() => handleAction(onClone)} 
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                  >
+                    <span>Clone</span>
+                    <Copy size={14} />
+                  </button>
+                  <button 
+                    onClick={() => handleAction(onEdit)} 
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                  >
+                    <span>Edit</span>
+                    <Edit2 size={14} />
+                  </button>
+                  <button 
+                    onClick={() => handleAction(onDelete)} 
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-red-600 active:bg-gray-50"
+                  >
+                    <span>Delete</span>
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Desktop actions */}
+            <div className="hidden md:flex gap-2">
+              <button 
+                onClick={() => onToggleMonitoring(device)} 
+                className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                  device.monitoring_enabled 
+                    ? 'bg-red-100 text-red-600 active:bg-red-200' 
+                    : 'bg-green-100 text-green-600 active:bg-green-200'
+                }`}
+                aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
+              >
+                {device.monitoring_enabled ? <X size={18} /> : <Check size={18} />}
+              </button>
+              <button 
+                onClick={() => onClone(device)} 
+                className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
+                title="Clone Device"
+                aria-label="Clone device"
+              >
+                <Copy size={18} />
+              </button>
+              <button 
+                onClick={() => onEdit(device)} 
+                className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Edit device"
+              >
+                <Edit2 size={18} />
+              </button>
+              <button 
+                onClick={() => onDelete(device)} 
+                className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                aria-label="Delete device"
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -175,40 +228,85 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
           )}
         </div>
         
-        <div className="flex gap-2 md:ml-4 self-start md:self-auto">
-          <button 
-            onClick={() => onToggleMonitoring(device)} 
-            className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
-              device.monitoring_enabled 
-                ? 'bg-red-100 text-red-600 active:bg-red-200' 
-                : 'bg-green-100 text-green-600 active:bg-green-200'
-            }`}
-            aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
-          >
-            {device.monitoring_enabled ? <X size={20} /> : <Check size={20} />}
-          </button>
-          <button 
-            onClick={() => onClone(device)} 
-            className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
-            title="Clone Device"
-            aria-label="Clone device"
-          >
-            <Copy size={20} />
-          </button>
-          <button 
-            onClick={() => onEdit(device)} 
-            className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Edit device"
-          >
-            <Edit2 size={20} />
-          </button>
-          <button 
-            onClick={() => onDelete(device.id)} 
-            className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
-            aria-label="Delete device"
-          >
-            <Trash2 size={20} />
-          </button>
+        <div className="flex gap-2 md:ml-4 self-start md:self-auto items-center">
+          <div className="relative md:hidden">
+            <button
+              onClick={() => setActionsOpen(!actionsOpen)}
+              className="p-2.5 bg-gray-200 text-gray-700 rounded-lg active:bg-gray-300 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-haspopup="true"
+              aria-expanded={actionsOpen}
+            >
+              <MoreVertical size={20} />
+            </button>
+            {actionsOpen && (
+              <div className="absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg w-48 z-10">
+                <button 
+                  onClick={() => handleAction(onToggleMonitoring)} 
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                >
+                  <span>{device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}</span>
+                  {device.monitoring_enabled ? <X size={14} /> : <Check size={14} />}
+                </button>
+                <button 
+                  onClick={() => handleAction(onClone)} 
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                >
+                  <span>Clone</span>
+                  <Copy size={14} />
+                </button>
+                <button 
+                  onClick={() => handleAction(onEdit)} 
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm active:bg-gray-50"
+                >
+                  <span>Edit</span>
+                  <Edit2 size={14} />
+                </button>
+                <button 
+                  onClick={() => handleAction(onDelete)} 
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-red-600 active:bg-gray-50"
+                >
+                  <span>Delete</span>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden md:flex gap-2">
+            <button 
+              onClick={() => onToggleMonitoring(device)} 
+              className={`p-2.5 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center ${
+                device.monitoring_enabled 
+                  ? 'bg-red-100 text-red-600 active:bg-red-200' 
+                  : 'bg-green-100 text-green-600 active:bg-green-200'
+              }`}
+              aria-label={device.monitoring_enabled ? 'Disable monitoring' : 'Enable monitoring'}
+            >
+              {device.monitoring_enabled ? <X size={20} /> : <Check size={20} />}
+            </button>
+            <button 
+              onClick={() => onClone(device)} 
+              className="p-2.5 bg-purple-100 text-purple-600 rounded-lg active:bg-purple-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center" 
+              title="Clone Device"
+              aria-label="Clone device"
+            >
+              <Copy size={20} />
+            </button>
+            <button 
+              onClick={() => onEdit(device)} 
+              className="p-2.5 bg-blue-100 text-blue-600 rounded-lg active:bg-blue-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Edit device"
+            >
+              <Edit2 size={20} />
+            </button>
+            <button 
+              onClick={() => onDelete(device)} 
+              className="p-2.5 bg-red-100 text-red-600 rounded-lg active:bg-red-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Delete device"
+            >
+              <Trash2 size={20} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

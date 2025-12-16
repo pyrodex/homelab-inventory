@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -35,6 +35,10 @@ function App() {
   const [error, setError] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Load data on mount and when filter changes
   useEffect(() => {
@@ -104,6 +108,7 @@ function App() {
 
   const handleExportPrometheus = async (mode = 'download') => {
     try {
+      setExporting(true);
       if (mode === 'write') {
         const data = await prometheusApi.export('write');
         alert(`Success! ${data.message}`);
@@ -114,6 +119,8 @@ function App() {
     } catch (err) {
       console.error('Failed to export:', err);
       setError('Failed to export configuration');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -132,19 +139,24 @@ function App() {
     }
   };
 
-  const deleteDevice = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this device?')) {
-      return;
-    }
-    
+  const requestDelete = (device) => {
+    setPendingDelete(device);
+  };
+
+  const deleteDevice = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
     try {
-      await deviceApi.delete(id);
+      await deviceApi.delete(pendingDelete.id);
       fetchDevices();
       fetchStats();
     } catch (err) {
       console.error('Failed to delete device:', err);
       setError(err.message || 'Failed to delete device');
       setErrorDetails(err.details || null);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
     }
   };
 
@@ -190,50 +202,101 @@ function App() {
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 truncate">Homelab Inventory</h1>
               <p className="text-xs sm:text-sm md:text-base text-gray-600 mt-1">Manage your infrastructure monitoring</p>
             </div>
-            <div className="grid grid-cols-2 md:flex md:gap-3 gap-2 w-full md:w-auto flex-shrink-0">
-              <button 
-                onClick={() => setShowAdminModal(true)} 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
-                aria-label="Open admin panel"
-              >
-                <Settings size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
-                <span className="truncate">Admin</span>
-              </button>
-              <button 
-                onClick={() => handleExportPrometheus('write')} 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
-                aria-label="Write Prometheus files"
-              >
-                <Check size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
-                <span className="hidden md:inline truncate">Write Prometheus Files</span>
-                <span className="md:hidden truncate">Write</span>
-              </button>
-              <button 
-                onClick={() => handleExportPrometheus('download')} 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
-                aria-label="Download configuration"
-              >
-                <Download size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
-                <span className="hidden md:inline truncate">Download Config</span>
-                <span className="md:hidden truncate">Download</span>
-              </button>
-              <button 
-                onClick={() => setShowBulkModal(true)} 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-purple-600 text-white rounded-lg active:bg-purple-700 transition-colors touch-manipulation min-h-[44px] text-xs sm:text-sm md:text-base"
-                aria-label="Bulk operations"
-              >
-                <FileDown size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
-                <span className="hidden md:inline truncate">Bulk Ops</span>
-                <span className="md:hidden truncate">Bulk</span>
-              </button>
-              <button 
-                onClick={() => setShowAddModal(true)} 
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-2 sm:px-3 md:px-4 py-2.5 md:py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] col-span-2 md:col-span-1 text-xs sm:text-sm md:text-base"
-                aria-label="Add new device"
-              >
-                <Plus size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 flex-shrink-0" />
-                <span className="truncate">Add Device</span>
-              </button>
+            <div className="w-full md:w-auto flex-shrink-0">
+              {/* Desktop actions */}
+              <div className="hidden md:flex md:gap-3">
+                <button 
+                  onClick={() => setShowAdminModal(true)} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                  aria-label="Open admin panel"
+                >
+                  <Settings size={20} className="flex-shrink-0" />
+                  <span className="truncate">Admin</span>
+                </button>
+                <button 
+                  onClick={() => handleExportPrometheus('write')} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base disabled:opacity-70"
+                  aria-label="Write Prometheus files"
+                  disabled={exporting}
+                >
+                  <Check size={20} className="flex-shrink-0" />
+                  <span className="truncate">Write Prometheus</span>
+                </button>
+                <button 
+                  onClick={() => handleExportPrometheus('download')} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base disabled:opacity-70"
+                  aria-label="Download configuration"
+                  disabled={exporting}
+                >
+                  <Download size={20} className="flex-shrink-0" />
+                  <span className="truncate">Download Config</span>
+                </button>
+                <button 
+                  onClick={() => setShowBulkModal(true)} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg active:bg-purple-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                  aria-label="Bulk operations"
+                >
+                  <FileDown size={20} className="flex-shrink-0" />
+                  <span className="truncate">Bulk Ops</span>
+                </button>
+                <button 
+                  onClick={() => setShowAddModal(true)} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                  aria-label="Add new device"
+                >
+                  <Plus size={20} className="flex-shrink-0" />
+                  <span className="truncate">Add Device</span>
+                </button>
+              </div>
+
+              {/* Mobile action launcher */}
+              <div className="md:hidden">
+                <button
+                  onClick={() => setShowActionMenu(!showActionMenu)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px]"
+                  aria-expanded={showActionMenu}
+                  aria-controls="action-menu"
+                >
+                  <span className="font-medium">Actions</span>
+                  <ChevronDown className={`transition-transform ${showActionMenu ? 'rotate-180' : ''}`} size={18} />
+                </button>
+                {showActionMenu && (
+                  <div id="action-menu" className="mt-2 bg-white border border-gray-200 rounded-lg shadow divide-y divide-gray-100">
+                    <button
+                      onClick={() => { setShowAddModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Plus size={18} /> Add Device</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowBulkModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><FileDown size={18} /> Bulk Ops</span>
+                    </button>
+                    <button
+                      onClick={() => { handleExportPrometheus('download'); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 disabled:opacity-70"
+                      disabled={exporting}
+                    >
+                      <span className="flex items-center gap-2"><Download size={18} /> Download Config</span>
+                    </button>
+                    <button
+                      onClick={() => { handleExportPrometheus('write'); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 disabled:opacity-70"
+                      disabled={exporting}
+                    >
+                      <span className="flex items-center gap-2"><Check size={18} /> Write Prometheus</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowAdminModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Settings size={18} /> Admin</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -336,8 +399,22 @@ function App() {
       {/* Device List */}
       <main className="max-w-7xl mx-auto px-4 py-4 pb-8">
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading devices...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1,2,3,4].map(key => (
+              <div key={key} className="bg-white p-4 md:p-6 rounded-lg shadow">
+                <div className="animate-pulse space-y-3">
+                  <div className="h-5 bg-gray-200 rounded w-2/3"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="h-10 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : devices.length === 0 ? (
           <div className="bg-white p-12 rounded-lg shadow text-center">
@@ -352,7 +429,7 @@ function App() {
             onToggleMonitoring={toggleMonitoring} 
             onEdit={setEditingDevice} 
             onClone={handleClone} 
-            onDelete={deleteDevice} 
+            onDelete={requestDelete} 
             onClearSearch={() => {
               setSearchTerm('');
               setSearchResults(null);
@@ -393,6 +470,36 @@ function App() {
           }}
           onError={setError}
         />
+      )}
+      
+      {pendingDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Delete device</h3>
+            </div>
+            <div className="p-4 space-y-2">
+              <p className="text-gray-700">Are you sure you want to delete <span className="font-semibold">{pendingDelete.name}</span>?</p>
+              <p className="text-sm text-gray-500">This will remove its monitors and stats. You can re-add it later if needed.</p>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex flex-col-reverse md:flex-row md:justify-end gap-2">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="w-full md:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg active:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={deleteDevice}
+                className="w-full md:w-auto px-4 py-2.5 bg-red-600 text-white rounded-lg active:bg-red-700 transition-colors touch-manipulation min-h-[44px] disabled:opacity-70"
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       {successMessage && (

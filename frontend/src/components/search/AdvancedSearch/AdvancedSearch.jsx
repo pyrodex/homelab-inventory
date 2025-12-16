@@ -86,15 +86,14 @@ function AdvancedSearch({ onResults, onError, initialFilters = {} }) {
     setActiveFilters(active);
   }, [searchTerm, filters, vendors, models, locations]);
 
-  // Perform search when filters change
+  // Initial search when filters are preloaded
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
+    const hasInitial = searchTerm || Object.values(filters).some(v => v !== '');
+    if (hasInitial) {
       performSearch();
-    }, 300); // Debounce search
-
-    return () => clearTimeout(timeoutId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, filters]);
+  }, []);
 
   const performSearch = async () => {
     const hasFilters = searchTerm || Object.values(filters).some(v => v !== '');
@@ -129,12 +128,13 @@ function AdvancedSearch({ onResults, onError, initialFilters = {} }) {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-    
-    // Reset dependent filters
-    if (key === 'vendor_id') {
-      setFilters(prev => ({ ...prev, model_id: '' }));
-    }
+    setFilters(prev => {
+      const next = { ...prev, [key]: value };
+      if (key === 'vendor_id') {
+        next.model_id = '';
+      }
+      return next;
+    });
   };
 
   const removeFilter = (key) => {
@@ -156,6 +156,11 @@ function AdvancedSearch({ onResults, onError, initialFilters = {} }) {
       poe_powered: '',
       has_ip: '',
     });
+    if (onResults) onResults(null);
+  };
+
+  const handleApply = () => {
+    performSearch();
   };
 
   // Filter models by selected vendor
@@ -174,10 +179,23 @@ function AdvancedSearch({ onResults, onError, initialFilters = {} }) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleApply();
+                }
+              }}
               placeholder="Search by name, IP, function, serial number, networks..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
             />
           </div>
+          <button
+            onClick={handleApply}
+            className="px-4 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] flex items-center gap-2"
+          >
+            <Search size={18} />
+            <span className="hidden sm:inline">Search</span>
+          </button>
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
             className={`px-4 py-2.5 rounded-lg transition-colors touch-manipulation min-h-[44px] flex items-center gap-2 ${
@@ -346,6 +364,25 @@ function AdvancedSearch({ onResults, onError, initialFilters = {} }) {
                 <option value="true">Has IP</option>
                 <option value="false">No IP</option>
               </select>
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between pt-2 border-t border-gray-200">
+            <div className="text-sm text-gray-600" aria-live="polite">
+              Apply changes when ready to avoid reloading while you type.
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={clearAllFilters}
+                className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg active:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+              >
+                Reset
+              </button>
+              <button
+                onClick={handleApply}
+                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px]"
+              >
+                Apply Filters
+              </button>
             </div>
           </div>
         </div>

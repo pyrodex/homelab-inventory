@@ -66,7 +66,7 @@ function DeviceList({
           onToggleMonitoring={onToggleMonitoring} 
           onEdit={onEdit} 
           onClone={onClone} 
-          onDelete={onDelete} 
+          onDelete={() => onDelete(device)} 
         />
       ))}
     </div>
