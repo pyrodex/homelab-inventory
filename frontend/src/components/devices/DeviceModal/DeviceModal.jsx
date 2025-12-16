@@ -341,14 +341,12 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <span className="inline-flex items-center gap-2">
                     <span>Address *</span>
-                    <button
-                      type="button"
-                      className="text-gray-400 hover:text-gray-600"
-                      aria-label="Address help"
-                      title="IPv4 is validated. Domains are allowed. Ports belong in monitor settings."
-                    >
+                    <span className="relative inline-flex items-center group cursor-pointer text-gray-400 hover:text-gray-600" aria-label="Address help">
                       <Info size={16} />
-                    </button>
+                      <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 w-56 -translate-x-1/2 rounded-md bg-gray-900 px-3 py-2 text-xs text-white opacity-0 transition duration-150 group-hover:opacity-100 group-hover:translate-y-0 translate-y-1 shadow-lg">
+                        IPv4 is validated. Domains are allowed. Ports belong in monitor settings.
+                      </span>
+                    </span>
                   </span>
                 </label>
                 <input 
