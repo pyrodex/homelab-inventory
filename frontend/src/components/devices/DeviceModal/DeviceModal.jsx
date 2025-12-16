@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { deviceApi, monitorApi, vendorApi, modelApi, locationApi } from '../../../services/api';
 import { 
   DEVICE_TYPES, 
@@ -339,7 +339,17 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address *
+                  <span className="inline-flex items-center gap-2">
+                    <span>Address *</span>
+                    <button
+                      type="button"
+                      className="text-gray-400 hover:text-gray-600"
+                      aria-label="Address help"
+                      title="IPv4 is validated. Domains are allowed. Ports belong in monitor settings."
+                    >
+                      <Info size={16} />
+                    </button>
+                  </span>
                 </label>
                 <input 
                   type="text" 
@@ -349,7 +359,6 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                   required 
                 />
-                <p className="text-xs text-gray-500 mt-1">IPv4 is validated. Domains are allowed. Ports belong in monitor settings.</p>
               </div>
               
               <div>
