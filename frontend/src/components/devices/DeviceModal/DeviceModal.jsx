@@ -341,6 +341,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                   required 
                 />
+                <p className="text-xs text-gray-500 mt-1">IPv4 only; you can include an optional port.</p>
               </div>
               
               <div>
