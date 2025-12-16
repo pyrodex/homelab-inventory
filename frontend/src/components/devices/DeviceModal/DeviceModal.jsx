@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { deviceApi, monitorApi, vendorApi, modelApi, locationApi } from '../../../services/api';
 import { 
   DEVICE_TYPES, 
@@ -8,6 +8,28 @@ import {
   INTERFACE_TYPES, 
   POE_STANDARDS 
 } from '../../../constants/deviceTypes';
+
+const Section = ({ title, description, isOpen, onToggle, children }) => (
+  <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
+    <button
+      type="button"
+      onClick={onToggle}
+      className="w-full flex items-center justify-between px-4 md:px-6 py-3 md:py-4 text-left"
+      aria-expanded={isOpen}
+    >
+      <div>
+        <p className="text-base md:text-lg font-semibold text-gray-900">{title}</p>
+        {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+      </div>
+      {isOpen ? <ChevronUp size={20} className="text-gray-500" /> : <ChevronDown size={20} className="text-gray-500" />}
+    </button>
+    <div className={`${isOpen ? 'block' : 'hidden'} md:block border-t border-gray-200`}>
+      <div className="p-4 md:p-6">
+        {children}
+      </div>
+    </div>
+  </div>
+);
 
 function DeviceModal({ device, onClose, onSave, onError }) {
   const normalizeDevice = (deviceData) => ({
@@ -54,6 +76,11 @@ function DeviceModal({ device, onClose, onSave, onError }) {
   const [selectedPoeStandards, setSelectedPoeStandards] = useState(
     device?.poe_standards ? device.poe_standards.split(',') : []
   );
+  const [sectionOpen, setSectionOpen] = useState({
+    basics: true,
+    networking: true,
+    monitors: true,
+  });
 
   useEffect(() => { 
     loadInitialData(); 
@@ -76,6 +103,10 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     } catch (err) {
       console.error('Failed to load initial data:', err);
     }
+  };
+
+  const toggleSection = (key) => {
+    setSectionOpen(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   const loadVendors = async () => {
@@ -261,210 +292,216 @@ function DeviceModal({ device, onClose, onSave, onError }) {
           </button>
         </div>
         
-        <div className="p-4 md:p-6">
-          {/* Basic Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Device Name *
-              </label>
-              <input 
-                type="text" 
-                value={formData.name} 
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
-                required 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Device Type *
-              </label>
-              <select 
-                value={formData.device_type} 
-                onChange={(e) => setFormData({ ...formData, device_type: e.target.value })} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
-                required
-              >
-                {DEVICE_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address *
-              </label>
-              <input 
-                type="text" 
-                value={formData.ip_address} 
-                onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })} 
-                placeholder="192.168.1.10, example.com, or 192.168.1.10:9100" 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
-                required 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Device Function *
-              </label>
-              <input 
-                type="text" 
-                value={formData.deviceFunction} 
-                onChange={(e) => setFormData({ ...formData, deviceFunction: e.target.value })} 
-                placeholder="Provide device function..." 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
-                required 
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vendor *
-              </label>
-              <select 
-                value={formData.vendor_id} 
-                onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value, model_id: '' })} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
-                required
-              >
-                <option value="">Select Vendor...</option>
-                {vendors.map(vendor => (
-                  <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Model *
-              </label>
-              <select 
-                value={formData.model_id} 
-                onChange={(e) => setFormData({ ...formData, model_id: e.target.value })} 
-                disabled={!formData.vendor_id} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-base touch-manipulation" 
-                required
-              >
-                <option value="">Select Model...</option>
-                {models.map(model => (
-                  <option key={model.id} value={model.id}>{model.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location *
-              </label>
-              <select 
-                value={formData.location_id} 
-                onChange={(e) => setFormData({ ...formData, location_id: e.target.value })} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
-                required
-              >
-                <option value="">Select Location...</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id}>{location.name}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Serial Number *
-              </label>
-              <input 
-                type="text" 
-                value={formData.serial_number} 
-                onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} 
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
-                required 
-              />
-            </div>
-            
-            {/* Networks */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Networks
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {NETWORKS.map(network => (
-                  <button 
-                    key={network} 
-                    type="button" 
-                    onClick={() => handleNetworkToggle(network)} 
-                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
-                      selectedNetworks.includes(network) 
-                        ? 'bg-blue-600 text-white active:bg-blue-700' 
-                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
-                    }`}
-                  >
-                    {network}
-                  </button>
-                ))}
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+          <Section
+            title="Basics"
+            description="Required fields to identify the device."
+            isOpen={sectionOpen.basics}
+            onToggle={() => toggleSection('basics')}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Device Name *
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  required 
+                />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Select ALL to override other selections</p>
-            </div>
-            
-            {/* Interface Types */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Interface Types
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {INTERFACE_TYPES.map(iface => (
-                  <button 
-                    key={iface} 
-                    type="button" 
-                    onClick={() => handleInterfaceToggle(iface)} 
-                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
-                      selectedInterfaces.includes(iface) 
-                        ? 'bg-purple-600 text-white active:bg-purple-700' 
-                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
-                    }`}
-                  >
-                    {iface}
-                  </button>
-                ))}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Device Type *
+                </label>
+                <select 
+                  value={formData.device_type} 
+                  onChange={(e) => setFormData({ ...formData, device_type: e.target.value })} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
+                  required
+                >
+                  {DEVICE_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
               </div>
-              <p className="text-xs text-gray-500 mt-1">Select multiple interface types if applicable</p>
-            </div>
-            
-            {/* PoE Standards */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                PoE Standards
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {POE_STANDARDS.map(poe => (
-                  <button 
-                    key={poe} 
-                    type="button" 
-                    onClick={() => handlePoeStandardToggle(poe)} 
-                    className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
-                      selectedPoeStandards.includes(poe) 
-                        ? 'bg-amber-600 text-white active:bg-amber-700' 
-                        : 'bg-gray-200 text-gray-700 active:bg-gray-300'
-                    }`}
-                  >
-                    {poe}
-                  </button>
-                ))}
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Address *
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.ip_address} 
+                  onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })} 
+                  placeholder="192.168.1.10 or 192.168.1.10:9100" 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  required 
+                />
               </div>
-              <p className="text-xs text-gray-500 mt-1">Select applicable PoE standards for this device</p>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Device Function *
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.deviceFunction} 
+                  onChange={(e) => setFormData({ ...formData, deviceFunction: e.target.value })} 
+                  placeholder="Provide device function..." 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  required 
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vendor *
+                </label>
+                <select 
+                  value={formData.vendor_id} 
+                  onChange={(e) => setFormData({ ...formData, vendor_id: e.target.value, model_id: '' })} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
+                  required
+                >
+                  <option value="">Select Vendor...</option>
+                  {vendors.map(vendor => (
+                    <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Model *
+                </label>
+                <select 
+                  value={formData.model_id} 
+                  onChange={(e) => setFormData({ ...formData, model_id: e.target.value })} 
+                  disabled={!formData.vendor_id} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed text-base touch-manipulation" 
+                  required
+                >
+                  <option value="">Select Model...</option>
+                  {models.map(model => (
+                    <option key={model.id} value={model.id}>{model.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location *
+                </label>
+                <select 
+                  value={formData.location_id} 
+                  onChange={(e) => setFormData({ ...formData, location_id: e.target.value })} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation" 
+                  required
+                >
+                  <option value="">Select Location...</option>
+                  {locations.map(location => (
+                    <option key={location.id} value={location.id}>{location.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Serial Number *
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.serial_number} 
+                  onChange={(e) => setFormData({ ...formData, serial_number: e.target.value })} 
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  required 
+                />
+              </div>
             </div>
-            
-            {/* Options */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Options
-              </label>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px]">
+          </Section>
+
+          <Section
+            title="Networking & Power"
+            description="Interfaces, networks, PoE, and monitoring defaults."
+            isOpen={sectionOpen.networking}
+            onToggle={() => toggleSection('networking')}
+          >
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Networks
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {NETWORKS.map(network => (
+                    <button 
+                      key={network} 
+                      type="button" 
+                      onClick={() => handleNetworkToggle(network)} 
+                      className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
+                        selectedNetworks.includes(network) 
+                          ? 'bg-blue-600 text-white active:bg-blue-700' 
+                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                      }`}
+                    >
+                      {network}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Select ALL to override other selections</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Interface Types
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {INTERFACE_TYPES.map(iface => (
+                    <button 
+                      key={iface} 
+                      type="button" 
+                      onClick={() => handleInterfaceToggle(iface)} 
+                      className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
+                        selectedInterfaces.includes(iface) 
+                          ? 'bg-purple-600 text-white active:bg-purple-700' 
+                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                      }`}
+                    >
+                      {iface}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Select multiple interface types if applicable</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  PoE Standards
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {POE_STANDARDS.map(poe => (
+                    <button 
+                      key={poe} 
+                      type="button" 
+                      onClick={() => handlePoeStandardToggle(poe)} 
+                      className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
+                        selectedPoeStandards.includes(poe) 
+                          ? 'bg-amber-600 text-white active:bg-amber-700' 
+                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                      }`}
+                    >
+                      {poe}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Select applicable PoE standards for this device</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200">
                   <input 
                     type="checkbox" 
                     checked={formData.poe_powered} 
@@ -473,7 +510,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                   />
                   <span className="text-sm font-medium text-gray-700">PoE Powered</span>
                 </label>
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px]">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200">
                   <input 
                     type="checkbox" 
                     checked={formData.monitoring_enabled} 
@@ -484,69 +521,73 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                 </label>
               </div>
             </div>
-          </div>
-          
-          {/* Monitors Section */}
-          <div className="border-t pt-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Monitors</h3>
-            
-            {monitors.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {monitors.map((monitor, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                    <span className="flex-1 text-sm">
-                      {MONITOR_TYPES.find(m => m.value === monitor.monitor_type)?.label || monitor.monitor_type}
-                      {monitor.port && ` (Port: ${monitor.port})`}
-                    </span>
-                    <button 
-                      type="button" 
-                      onClick={() => removeMonitor(index)} 
-                      className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
-                      aria-label="Remove monitor"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+          </Section>
+
+          <Section
+            title="Monitors"
+            description="Add or remove monitors and ports."
+            isOpen={sectionOpen.monitors}
+            onToggle={() => toggleSection('monitors')}
+          >
+            <div className="space-y-4">
+              {monitors.length > 0 && (
+                <div className="space-y-2">
+                  {monitors.map((monitor, index) => (
+                    <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                      <span className="flex-1 text-sm">
+                        {MONITOR_TYPES.find(m => m.value === monitor.monitor_type)?.label || monitor.monitor_type}
+                        {monitor.port && ` (Port: ${monitor.port})`}
+                      </span>
+                      <button 
+                        type="button" 
+                        onClick={() => removeMonitor(index)} 
+                        className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                        aria-label="Remove monitor"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex flex-col md:flex-row gap-2">
+                <select 
+                  value={newMonitor.monitor_type} 
+                  onChange={(e) => { 
+                    const type = MONITOR_TYPES.find(m => m.value === e.target.value); 
+                    setNewMonitor({ 
+                      ...newMonitor, 
+                      monitor_type: e.target.value, 
+                      port: type?.defaultPort || null 
+                    }); 
+                  }} 
+                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
+                >
+                  {MONITOR_TYPES.map(type => (
+                    <option key={type.value} value={type.value}>{type.label}</option>
+                  ))}
+                </select>
+                <input 
+                  type="number" 
+                  value={newMonitor.port || ''} 
+                  onChange={(e) => setNewMonitor({ ...newMonitor, port: e.target.value ? parseInt(e.target.value) : null })} 
+                  placeholder="Port" 
+                  className="w-full md:w-24 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                />
+                <button 
+                  type="button" 
+                  onClick={addMonitor} 
+                  className="px-4 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px]"
+                >
+                  Add
+                </button>
               </div>
-            )}
-            
-            <div className="flex flex-col md:flex-row gap-2">
-              <select 
-                value={newMonitor.monitor_type} 
-                onChange={(e) => { 
-                  const type = MONITOR_TYPES.find(m => m.value === e.target.value); 
-                  setNewMonitor({ 
-                    ...newMonitor, 
-                    monitor_type: e.target.value, 
-                    port: type?.defaultPort || null 
-                  }); 
-                }} 
-                className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
-              >
-                {MONITOR_TYPES.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-              <input 
-                type="number" 
-                value={newMonitor.port || ''} 
-                onChange={(e) => setNewMonitor({ ...newMonitor, port: e.target.value ? parseInt(e.target.value) : null })} 
-                placeholder="Port" 
-                className="w-full md:w-24 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
-              />
-              <button 
-                type="button" 
-                onClick={addMonitor} 
-                className="px-4 py-2.5 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px]"
-              >
-                Add
-              </button>
             </div>
-          </div>
-          
+          </Section>
+
           {/* Action Buttons */}
-          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-6 border-t sticky bottom-0 bg-white pb-4 md:pb-0 -mx-4 md:mx-0 px-4 md:px-0">
+          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-4 md:pt-6 border-t sticky bottom-0 bg-white pb-4 md:pb-0 -mx-4 md:mx-0 px-4 md:px-0">
             <button 
               type="button" 
               onClick={onClose} 
