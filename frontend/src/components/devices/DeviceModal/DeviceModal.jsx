@@ -149,6 +149,13 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     setSelectedPoeStandards(newSelection);
   };
 
+  const isValidIPv4 = (value) => {
+    // Supports IPv4 with optional :port (1-65535)
+    const ipv4Segment = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+    const ipv4Regex = new RegExp(`^(${ipv4Segment}\\.){3}${ipv4Segment}(:(6553[0-5]|655[0-2]\\d|65[0-4]\\d{2}|6[0-4]\\d{3}|[1-5]\\d{4}|[1-9]\\d{0,3}))?$`);
+    return ipv4Regex.test(value.trim());
+  };
+
   const validateForm = () => {
     const missingFields = [];
     
@@ -163,6 +170,11 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     
     if (missingFields.length > 0) {
       onError(`The following required fields are missing:\n\n${missingFields.join('\n')}`);
+      return false;
+    }
+
+    if (formData.ip_address && !isValidIPv4(formData.ip_address)) {
+      onError('Address must be a valid IPv4 address (optionally with :port).');
       return false;
     }
     
