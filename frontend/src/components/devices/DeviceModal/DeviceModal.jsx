@@ -181,9 +181,9 @@ function DeviceModal({ device, onClose, onSave, onError }) {
   };
 
   const isValidIPv4 = (value) => {
-    // Supports IPv4 with optional :port (1-65535)
+    // Strict IPv4 (no ports)
     const ipv4Segment = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
-    const ipv4Regex = new RegExp(`^(${ipv4Segment}\\.){3}${ipv4Segment}(:(6553[0-5]|655[0-2]\\d|65[0-4]\\d{2}|6[0-4]\\d{3}|[1-5]\\d{4}|[1-9]\\d{0,3}))?$`);
+    const ipv4Regex = new RegExp(`^(${ipv4Segment}\\.){3}${ipv4Segment}$`);
     return ipv4Regex.test(value.trim());
   };
 
@@ -204,9 +204,17 @@ function DeviceModal({ device, onClose, onSave, onError }) {
       return false;
     }
 
-    if (formData.ip_address && !isValidIPv4(formData.ip_address)) {
-      onError('Address must be a valid IPv4 address (optionally with :port).');
-      return false;
+    if (formData.ip_address) {
+      const value = formData.ip_address.trim();
+      if (value.includes(':')) {
+        onError('Ports are configured per monitor. Omit the port from the address.');
+        return false;
+      }
+      const looksIPv4 = /^[0-9.]+$/.test(value);
+      if (looksIPv4 && !isValidIPv4(value)) {
+        onError('Address must be a valid IPv4 or a domain (no ports).');
+        return false;
+      }
     }
     
     return true;
@@ -337,11 +345,11 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                   type="text" 
                   value={formData.ip_address} 
                   onChange={(e) => setFormData({ ...formData, ip_address: e.target.value })} 
-                  placeholder="192.168.1.10 or 192.168.1.10:9100" 
+                  placeholder="192.168.1.10 or example.com" 
                   className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
                   required 
                 />
-                <p className="text-xs text-gray-500 mt-1">IPv4 only; you can include an optional port.</p>
+                <p className="text-xs text-gray-500 mt-1">IPv4 is validated. Domains are allowed. Ports belong in monitor settings.</p>
               </div>
               
               <div>
