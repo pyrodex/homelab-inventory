@@ -590,15 +590,15 @@ function DeviceModal({ device, onClose, onSave, onError }) {
               {monitors.length > 0 && (
                 <div className="space-y-2">
                   {monitors.map((monitor, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <span className="flex-1 text-sm">
+                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <span className="flex-1 text-sm text-gray-900 dark:text-gray-100">
                         {MONITOR_TYPES.find(m => m.value === monitor.monitor_type)?.label || monitor.monitor_type}
                         {monitor.port && ` (Port: ${monitor.port})`}
                       </span>
                       <button 
                         type="button" 
                         onClick={() => removeMonitor(index)} 
-                        className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                      className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                         aria-label="Remove monitor"
                       >
                         <X size={16} />
@@ -619,7 +619,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       port: type?.defaultPort || null 
                     }); 
                   }} 
-                  className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
+                  className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 >
                   {MONITOR_TYPES.map(type => (
                     <option key={type.value} value={type.value}>{type.label}</option>
@@ -630,7 +630,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                   value={newMonitor.port || ''} 
                   onChange={(e) => setNewMonitor({ ...newMonitor, port: e.target.value ? parseInt(e.target.value) : null })} 
                   placeholder="Port" 
-                  className="w-full md:w-24 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  className="w-full md:w-24 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                 />
                 <button 
                   type="button" 
