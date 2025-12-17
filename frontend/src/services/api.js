@@ -59,6 +59,7 @@ export const deviceApi = {
   },
   
   getById: (id) => apiRequest(`/devices/${id}`),
+  getHistory: (id, { limit = 50, offset = 0 } = {}) => apiRequest(`/devices/${id}/history?limit=${limit}&offset=${offset}`),
   
   create: (deviceData) => apiRequest('/devices', {
     method: 'POST',

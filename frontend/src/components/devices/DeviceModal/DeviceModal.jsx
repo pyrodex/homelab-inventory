@@ -10,7 +10,7 @@ import {
 } from '../../../constants/deviceTypes';
 
 const Section = ({ title, description, isOpen, onToggle, children }) => (
-  <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
+  <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm transition-colors">
     <button
       type="button"
       onClick={onToggle}
@@ -18,12 +18,12 @@ const Section = ({ title, description, isOpen, onToggle, children }) => (
       aria-expanded={isOpen}
     >
       <div>
-        <p className="text-base md:text-lg font-semibold text-gray-900">{title}</p>
-        {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
+        <p className="text-base md:text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</p>
+        {description && <p className="text-sm text-gray-500 dark:text-gray-300 mt-0.5">{description}</p>}
       </div>
-      {isOpen ? <ChevronUp size={20} className="text-gray-500" /> : <ChevronDown size={20} className="text-gray-500" />}
+      {isOpen ? <ChevronUp size={20} className="text-gray-500 dark:text-gray-300" /> : <ChevronDown size={20} className="text-gray-500 dark:text-gray-300" />}
     </button>
-    <div className={`${isOpen ? 'block' : 'hidden'} md:block border-t border-gray-200`}>
+    <div className={`${isOpen ? 'block' : 'hidden'} md:block border-t border-gray-200 dark:border-gray-700`}>
       <div className="p-4 md:p-6">
         {children}
       </div>
@@ -63,6 +63,10 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     port: 9100, 
     enabled: true 
   });
+  const [historyEntries, setHistoryEntries] = useState([]);
+  const [historyMeta, setHistoryMeta] = useState({ total: 0, limit: 50, offset: 0 });
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
   
   const [vendors, setVendors] = useState([]);
   const [models, setModels] = useState([]);
@@ -80,6 +84,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     basics: true,
     networking: true,
     monitors: true,
+    history: !!device?.id,
   });
 
   useEffect(() => { 
@@ -93,6 +98,15 @@ function DeviceModal({ device, onClose, onSave, onError }) {
       setModels([]);
     }
   }, [formData.vendor_id]);
+
+  useEffect(() => {
+    if (device?.id) {
+      loadHistory();
+    } else {
+      setHistoryEntries([]);
+      setHistoryMeta({ total: 0, limit: 50, offset: 0 });
+    }
+  }, [device?.id]);
 
   const loadInitialData = async () => {
     try {
@@ -133,6 +147,26 @@ function DeviceModal({ device, onClose, onSave, onError }) {
       setLocations(data);
     } catch (err) {
       console.error('Failed to load locations:', err);
+    }
+  };
+
+  const loadHistory = async (offset = 0) => {
+    if (!device?.id) return;
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const payload = await deviceApi.getHistory(device.id, { limit: historyMeta.limit, offset });
+      setHistoryEntries(payload.items || []);
+      setHistoryMeta({
+        total: payload.total ?? payload.items?.length ?? 0,
+        limit: payload.limit ?? historyMeta.limit,
+        offset: payload.offset ?? offset,
+      });
+    } catch (err) {
+      console.error('Failed to load history:', err);
+      setHistoryError(err.message || 'Failed to load history');
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -185,6 +219,13 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     const ipv4Segment = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
     const ipv4Regex = new RegExp(`^(${ipv4Segment}\\.){3}${ipv4Segment}$`);
     return ipv4Regex.test(value.trim());
+  };
+
+  const formatValue = (value) => {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (value === '') return 'Empty';
+    return value;
   };
 
   const validateForm = () => {
@@ -288,12 +329,12 @@ function DeviceModal({ device, onClose, onSave, onError }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content">
-        <div className="sticky top-0 bg-white z-10 p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">{modalTitle}</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{modalTitle}</h2>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 active:text-gray-800 dark:text-gray-300 dark:hover:text-gray-100 dark:active:text-white transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Close modal"
           >
             <X size={24} />
@@ -602,12 +643,85 @@ function DeviceModal({ device, onClose, onSave, onError }) {
             </div>
           </Section>
 
+          {device?.id && (
+            <Section
+              title="History"
+              description="Track changes made to this device."
+              isOpen={sectionOpen.history}
+              onToggle={() => toggleSection('history')}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    Showing {historyEntries.length} of {historyMeta.total} change{historyMeta.total === 1 ? '' : 's'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => loadHistory(historyMeta.offset)}
+                    className="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation min-h-[38px]"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                {historyError && (
+                  <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg p-3">
+                    {historyError}
+                  </div>
+                )}
+
+                {historyLoading ? (
+                  <div className="space-y-2">
+                    {[1,2,3].map(key => (
+                      <div key={key} className="h-16 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : historyEntries.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">No history yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {historyEntries.map(entry => (
+                      <div key={entry.id} className="border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{entry.summary || 'Change recorded'}</p>
+                            <p className="text-xs text-gray-500">{new Date(entry.created_at).toLocaleString()}</p>
+                          </div>
+                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100 capitalize">
+                            {entry.change_type.replace('_', ' ')}
+                          </span>
+                        </div>
+                        {entry.diff && Object.keys(entry.diff).length > 0 ? (
+                          <div className="mt-3 space-y-2">
+                            {Object.entries(entry.diff).map(([field, change]) => (
+                              <div key={field} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{field}</span>
+                                <div className="text-sm text-gray-900 dark:text-gray-100 sm:text-right">
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 pr-1">from</span>
+                                  {formatValue(change.old)}
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 px-1">to</span>
+                                  {formatValue(change.new)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">No field changes recorded.</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
+
           {/* Action Buttons */}
-          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-4 md:pt-6 border-t sticky bottom-0 bg-white pb-4 md:pb-0 -mx-4 md:mx-0 px-4 md:px-0">
+          <div className="flex flex-col-reverse md:flex-row md:justify-end gap-3 pt-4 md:pt-6 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-900 pb-4 md:pb-0 -mx-4 md:mx-0 px-4 md:px-0">
             <button 
               type="button" 
               onClick={onClose} 
-              className="w-full md:w-auto px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg active:bg-gray-50 transition-colors touch-manipulation min-h-[44px]"
+              className="w-full md:w-auto px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg active:bg-gray-50 dark:active:bg-gray-800 transition-colors touch-manipulation min-h-[44px]"
             >
               Cancel
             </button>

@@ -8,7 +8,8 @@ import io
 import json
 import logging
 
-from models import db, Device, Vendor, Model, Location
+from models import db, Device, Vendor, Model, Location, DeviceHistory
+from utils.history import extract_device_state, compute_diff
 from validators import DeviceSchema
 from exceptions import DatabaseError, ValidationError
 from marshmallow import ValidationError as MarshmallowValidationError
@@ -46,6 +47,7 @@ def bulk_import_devices():
             
             devices_created = []
             devices_failed = []
+            history_entries = []
             schema = DeviceSchema()
             
             for idx, device_data in enumerate(data):
@@ -53,6 +55,13 @@ def bulk_import_devices():
                     validated_data = schema.load(device_data)
                     device = Device(**validated_data)
                     db.session.add(device)
+                    db.session.flush()
+                    history_entries.append(DeviceHistory(
+                        device_id=device.id,
+                        change_type='bulk_import',
+                        summary=f"Imported device '{device_data.get('name', f'Device {idx+1}')}' via JSON",
+                        diff=compute_diff(None, extract_device_state(device))
+                    ))
                     devices_created.append(device_data.get('name', f'Device {idx+1}'))
                 except MarshmallowValidationError as err:
                     devices_failed.append({
@@ -68,6 +77,8 @@ def bulk_import_devices():
                     })
             
             if devices_created:
+                if history_entries:
+                    db.session.add_all(history_entries)
                 db.session.commit()
             
             return jsonify({
@@ -90,6 +101,7 @@ def bulk_import_devices():
             
             devices_created = []
             devices_failed = []
+            history_entries = []
             schema = DeviceSchema()
             
             for idx, row in enumerate(csv_reader):
@@ -131,6 +143,13 @@ def bulk_import_devices():
                     validated_data = schema.load(device_data)
                     device = Device(**validated_data)
                     db.session.add(device)
+                    db.session.flush()
+                    history_entries.append(DeviceHistory(
+                        device_id=device.id,
+                        change_type='bulk_import',
+                        summary=f"Imported device '{device_data.get('name', f'Row {idx+1}')}' via CSV",
+                        diff=compute_diff(None, extract_device_state(device))
+                    ))
                     devices_created.append(device_data.get('name', f'Row {idx+1}'))
                 except Exception as e:
                     devices_failed.append({
@@ -140,6 +159,8 @@ def bulk_import_devices():
                     })
             
             if devices_created:
+                if history_entries:
+                    db.session.add_all(history_entries)
                 db.session.commit()
             
             return jsonify({
@@ -238,12 +259,20 @@ def bulk_delete_devices():
     
     deleted_count = 0
     failed_ids = []
+    history_entries = []
     
     try:
         for device_id in device_ids:
             try:
                 device = Device.query.get(device_id)
                 if device:
+                    previous_state = extract_device_state(device)
+                    history_entries.append(DeviceHistory(
+                        device_id=device.id,
+                        change_type='bulk_delete',
+                        summary=f"Deleted device '{device.name}' via bulk delete",
+                        diff=compute_diff(previous_state, None)
+                    ))
                     db.session.delete(device)
                     deleted_count += 1
                 else:
@@ -252,6 +281,8 @@ def bulk_delete_devices():
                 failed_ids.append({'id': device_id, 'error': str(e)})
         
         if deleted_count > 0:
+            if history_entries:
+                db.session.add_all(history_entries)
             db.session.commit()
         
         return jsonify({

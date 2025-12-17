@@ -146,3 +146,37 @@ class Monitor(db.Model):
             'notes': self.notes
         }
 
+
+class DeviceHistory(db.Model):
+    """Audit log of device changes"""
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(
+        db.Integer,
+        db.ForeignKey('device.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True
+    )
+    change_type = db.Column(db.String(50), nullable=False, index=True)  # create, update, delete, bulk_import, bulk_delete
+    diff = db.Column(db.JSON, nullable=False)
+    summary = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    device = db.relationship(
+        'Device',
+        backref=db.backref('history_entries', lazy=True, passive_deletes=True)
+    )
+
+    __table_args__ = (
+        db.Index('idx_history_device_created_at', 'device_id', 'created_at'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'change_type': self.change_type,
+            'diff': self.diff,
+            'summary': self.summary,
+            'created_at': self.created_at.isoformat()
+        }
+

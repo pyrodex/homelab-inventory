@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_migrate import Migrate
+from flask_migrate import Migrate, upgrade
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import logging
@@ -57,6 +57,30 @@ def set_sqlite_pragma(dbapi_conn, connection_record):
 
 # Initialize migrations
 migrate = Migrate(app, db)
+
+# Optional automatic migrations on startup
+def run_auto_migrations():
+    """
+    Run database migrations automatically by default.
+    Disable by setting AUTO_MIGRATE=false.
+    """
+    auto_migrate_env = os.environ.get('AUTO_MIGRATE', 'true').lower()
+    auto_migrate = auto_migrate_env not in ('false', '0', 'no', 'off')
+    if not auto_migrate:
+        logging.info("AUTO_MIGRATE disabled via env; skipping automatic migrations.")
+        return
+
+    try:
+        with app.app_context():
+            upgrade()
+            logging.info("Automatic migrations applied successfully.")
+    except Exception as exc:
+        logging.error(f"Automatic migration failed: {exc}", exc_info=True)
+        # In production we fail fast to avoid running with a stale schema
+        if app.config.get('FLASK_ENV') == 'production':
+            sys.exit(1)
+
+run_auto_migrations()
 
 # CORS Configuration
 allowed_origins = app.config.get('CORS_ORIGINS', ['*'])

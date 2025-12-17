@@ -6,7 +6,8 @@ from flask_limiter import Limiter
 from marshmallow import ValidationError as MarshmallowValidationError
 from datetime import datetime
 
-from models import db, Device
+from models import db, Device, DeviceHistory
+from utils.history import extract_device_state, compute_diff
 from validators import DeviceSchema
 from exceptions import DatabaseError, ReadOnlyDatabaseError
 from utils.response import (
@@ -26,6 +27,7 @@ def register_device_routes(app, limiter):
     limiter.limit("20 per minute")(create_device)
     limiter.limit("20 per minute")(update_device)
     limiter.limit("20 per minute")(delete_device)
+    limiter.limit("60 per minute")(get_device_history)
 
 
 @devices_bp.route('', methods=['GET'])
@@ -99,6 +101,13 @@ def create_device():
     )
     try:
         db.session.add(device)
+        db.session.flush()  # ensure device.id for history
+        db.session.add(DeviceHistory(
+            device_id=device.id,
+            change_type='create',
+            summary=f"Created device '{device.name}'",
+            diff=compute_diff(None, extract_device_state(device))
+        ))
         db.session.commit()
         return success_response(device.to_dict(), "Device created successfully", 201)
     except Exception as e:
@@ -116,6 +125,8 @@ def update_device(device_id):
     device = Device.query.get(device_id)
     if not device:
         return not_found_response("Device", device_id)
+
+    previous_state = extract_device_state(device)
     
     if not request.is_json:
         return error_response('Content-Type must be application/json', status_code=400)
@@ -170,6 +181,17 @@ def update_device(device_id):
     device.updated_at = datetime.utcnow()
     
     try:
+        new_state = extract_device_state(device)
+        diff = compute_diff(previous_state, new_state)
+
+        if diff:
+            db.session.add(DeviceHistory(
+                device_id=device.id,
+                change_type='update',
+                summary=f"Updated device '{device.name}'",
+                diff=diff
+            ))
+
         db.session.commit()
         return success_response(device.to_dict(), "Device updated successfully")
     except Exception as e:
@@ -187,8 +209,16 @@ def delete_device(device_id):
     device = Device.query.get(device_id)
     if not device:
         return not_found_response("Device", device_id)
+
+    previous_state = extract_device_state(device)
     
     try:
+        db.session.add(DeviceHistory(
+            device_id=device.id,
+            change_type='delete',
+            summary=f"Deleted device '{device.name}'",
+            diff=compute_diff(previous_state, None)
+        ))
         db.session.delete(device)
         db.session.commit()
         return success_response(None, "Device deleted successfully", 200)
@@ -199,4 +229,33 @@ def delete_device(device_id):
         if 'readonly' in error_msg.lower() or 'read-only' in error_msg.lower():
             return error_response("Database is read-only", status_code=500, error_code='READONLY_DATABASE')
         return error_response("Failed to delete device due to an internal error", status_code=500, error_code='DATABASE_ERROR')
+
+
+@devices_bp.route('/<int:device_id>/history', methods=['GET'])
+def get_device_history(device_id):
+    """Retrieve change history for a device"""
+    device = Device.query.get(device_id)
+    if not device:
+        return not_found_response("Device", device_id)
+
+    try:
+        limit = request.args.get('limit', default=50, type=int)
+        offset = request.args.get('offset', default=0, type=int)
+
+        limit = 1 if limit < 1 else min(limit, 100)
+        offset = 0 if offset < 0 else offset
+
+        query = DeviceHistory.query.filter_by(device_id=device_id).order_by(DeviceHistory.created_at.desc())
+        total = query.count()
+        items = query.offset(offset).limit(limit).all()
+
+        return success_response({
+            'items': [item.to_dict() for item in items],
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        })
+    except Exception as e:
+        logging.error(f"Failed to fetch device history for {device_id}: {e}", exc_info=True)
+        return error_response("Failed to fetch device history due to an internal error", status_code=500, error_code='DATABASE_ERROR')
 

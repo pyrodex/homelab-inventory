@@ -38,9 +38,9 @@ function DeviceList({
 
   if (filteredDevices.length === 0) {
     return (
-      <div className="bg-white p-12 rounded-lg shadow text-center">
-        <Server className="mx-auto text-gray-400 mb-4" size={48} />
-        <p className="text-gray-600">No devices match your search criteria.</p>
+      <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow text-center transition-colors">
+        <Server className="mx-auto text-gray-400 dark:text-gray-300 mb-4" size={48} />
+        <p className="text-gray-600 dark:text-gray-200">No devices match your search criteria.</p>
         <button 
           onClick={onClearSearch} 
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
