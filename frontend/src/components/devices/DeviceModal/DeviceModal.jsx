@@ -500,8 +500,8 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       onClick={() => handleNetworkToggle(network)} 
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedNetworks.includes(network) 
-                          ? 'bg-blue-600 text-white active:bg-blue-700' 
-                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
+                          ? 'bg-blue-600 text-white active:bg-blue-700 border border-blue-700 dark:border-blue-500' 
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700 border border-gray-300 dark:border-gray-700'
                       }`}
                     >
                       {network}
@@ -523,8 +523,8 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       onClick={() => handleInterfaceToggle(iface)} 
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedInterfaces.includes(iface) 
-                          ? 'bg-purple-600 text-white active:bg-purple-700' 
-                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
+                          ? 'bg-purple-600 text-white active:bg-purple-700 border border-purple-700 dark:border-purple-500' 
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700 border border-gray-300 dark:border-gray-700'
                       }`}
                     >
                       {iface}
@@ -546,8 +546,8 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       onClick={() => handlePoeStandardToggle(poe)} 
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedPoeStandards.includes(poe) 
-                          ? 'bg-amber-600 text-white active:bg-amber-700' 
-                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
+                          ? 'bg-amber-600 text-white active:bg-amber-700 border border-amber-700 dark:border-amber-500' 
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700 border border-gray-300 dark:border-gray-700'
                       }`}
                     >
                       {poe}
