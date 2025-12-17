@@ -15,6 +15,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Multiple Device Types**: Support for 13+ device types including Linux/FreeBSD servers, network equipment, cameras, and specialized devices
 - **Location Organization**: Organize devices by physical or logical locations (e.g., Data Center, Office, Rack 1)
 - **Vendor & Model Management**: Maintain a catalog of vendors and models for consistent device tracking
+- **Device History & Change Tracking**: Automatic audit log for device create/update/delete and bulk import/delete, with per-device history endpoint and UI timeline
 
 ### Monitoring Integration
 - **Prometheus Export**: Automatically generate Prometheus target configurations from your inventory
@@ -24,9 +25,10 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Organized Exports**: Automatically organize Prometheus targets by monitor type and device category
 
 ### User Interface
-- **Modern React UI**: Beautiful, responsive interface built with React and Tailwind CSS
-- **Mobile-Optimized**: Fully optimized for iOS and mobile devices with touch-friendly controls, safe area support, and optimized touch targets
-- **Advanced Search**: Powerful multi-field search with expandable filters (vendor, model, location, monitoring status, PoE, IP address)
+- **Modern React UI**: Responsive interface built with React and Tailwind CSS
+- **Dark Mode with Auto Theme**: Light/dark themes with system-preference auto mode; all dialogs (Admin, Bulk Ops, Advanced Search, Device modals) are theme aware
+- **Mobile-Optimized**: Touch-friendly controls, safe area support, and optimized touch targets
+- **Advanced Search**: Multi-field search with expandable filters (vendor, model, location, monitoring status, PoE, IP address)
 - **Search & Filter**: Real-time search across device fields with debouncing and filter by device type
 - **View Modes**: Switch between full detail view and condensed list view
 - **Real-time Stats**: Dashboard showing total devices, monitoring status, and device type breakdowns
@@ -61,6 +63,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Health Checks**: Basic and detailed health endpoints for monitoring application status
 - **System Metrics**: CPU, memory, and disk usage metrics (requires psutil)
 - **Database Statistics**: Device counts and database connectivity status
+- **Device History API**: `/api/devices/<id>/history` for audit visibility
 
 ## 🏗️ Architecture
 
@@ -76,7 +79,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 **Backend:**
 - Flask 3.0 RESTful API with modular blueprint architecture
 - SQLAlchemy ORM for database operations
-- Flask-Migrate for database schema versioning
+- Flask-Migrate/Alembic for database schema versioning (auto-migrate on startup enabled by default, can disable via `AUTO_MIGRATE=false`)
 - SQLite database (lightweight, file-based) with optimized indexes
 - Flask-CORS for cross-origin resource sharing
 - Flask-Limiter for API rate limiting
@@ -259,8 +262,9 @@ The application uses pre-built container images from GitHub Container Registry, 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `FLASK_ENV` | Flask environment (development/production) | `production` |
-| `DATABASE_PATH` | Path to SQLite database file | `/app/data/homelab.db` |
+| `DATABASE_PATH` | Path to SQLite database file | `homelab.db` |
 | `PROMETHEUS_EXPORT_PATH` | Directory for Prometheus config exports | `/app/prometheus_targets` |
+| `AUTO_MIGRATE` | Apply Alembic migrations on startup (`true`/`false`) | `true` |
 | `RATELIMIT_STORAGE_URL` | Rate limit storage (use Redis/Memcached for prod) | `memory://` |
 | `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
 | `BACKUP_DIRECTORY` | Directory for database backups | `/app/data/backups` |
@@ -279,19 +283,12 @@ Edit `docker-compose.yaml` to customize:
 
 ### Database
 
-The application uses SQLite by default, stored in the `data/` directory. The database is automatically created on first run.
+The application uses SQLite by default (`DATABASE_PATH`, default `homelab.db`). The database file is created if missing.
 
 **Schema management (migrations):**
-- Database creation for a brand-new environment is automatic (`db.create_all()` on first run).
-- Ongoing schema changes should be applied with Flask-Migrate/Alembic (`flask db upgrade`). Runtime ad-hoc ALTER TABLEs have been removed to avoid drift and race conditions.
-- Keep migration scripts under `backend/migrations/versions/` and run `flask db migrate -m "..."` after model changes.
-
-**Database Migrations:**
-- The project uses Flask-Migrate for schema versioning
-- Migrations are stored in `backend/migrations/`
-- To initialize migrations: `flask db init` (if needed)
-- To create a migration: `flask db migrate -m "description"`
-- To apply migrations: `flask db upgrade`
+- Flask-Migrate/Alembic manage schema. Migrations live in `backend/migrations/versions/`.
+- Auto-migration runs on startup by default (`AUTO_MIGRATE=true`). Set `AUTO_MIGRATE=false` to skip.
+- Generate migrations after model changes: `flask db migrate -m "description"` and apply with `flask db upgrade`.
 
 **Performance Optimizations:**
 - Database indexes on frequently queried fields (name, device_type, ip_address, monitoring_enabled, etc.)
@@ -390,6 +387,7 @@ The export organizes targets by monitor type:
   - Filter by IP address presence
   - Combine multiple filters for precise results
 - **Filter Chips**: Active filters are displayed as removable chips above the results
+- **Dark Mode Friendly**: Advanced search dropdown and chips adapt to dark mode
 - **Device Type Filter**: Select a device type from the dropdown to filter devices
 - **View Modes**: Toggle between full detail view and condensed list view
 
@@ -417,6 +415,7 @@ The export organizes targets by monitor type:
 - **Clone**: Click the clone icon to duplicate a device (useful for similar devices)
 - **Toggle Monitoring**: Click the check/X icon to enable/disable monitoring
 - **Delete**: Click the trash icon to remove a device (with confirmation)
+- **View History**: In the device modal, the History tab shows per-device change log with field-level diffs
 
 ## 🔌 API Documentation
 
@@ -430,6 +429,7 @@ All API endpoints are prefixed with `/api`
 
 - `GET /api/devices` - Get all devices (optional `?type=<device_type>` filter)
 - `GET /api/devices/<id>` - Get device by ID
+- `GET /api/devices/<id>/history` - Get device change history (supports `limit`/`offset`)
 - `POST /api/devices` - Create new device
 - `PUT /api/devices/<id>` - Update device
 - `DELETE /api/devices/<id>` - Delete device
@@ -1094,16 +1094,16 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [x] Enhanced UI error handling with field-specific validation
 - [x] Docker health checks
 - [x] Environment variable validation
+- [x] Device history and change tracking (audit log + API + UI)
+- [x] Dark mode theme with system auto option
 
 ### Future Enhancements
 
 - [ ] User authentication and authorization
 - [ ] Multi-user support with role-based access
 - [ ] Device templates and presets
-- [ ] Device history and change tracking
 - [ ] Integration with other monitoring systems (Grafana, etc.)
 - [ ] Automated device discovery
-- [ ] Dark mode theme
 - [ ] Internationalization (i18n) support
 - [ ] Caching layer (Redis) for improved performance
 - [ ] API documentation (OpenAPI/Swagger)
