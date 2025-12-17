@@ -171,13 +171,13 @@ function AdminModal({ onClose, onError }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-hidden flex flex-col modal-content">
-        <div className="p-4 md:p-6 border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-hidden flex flex-col modal-content transition-colors">
+        <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Administration</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Administration</h2>
             <button 
               onClick={onClose} 
-              className="p-2 active:bg-gray-100 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className="p-2 active:bg-gray-100 dark:active:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-lg transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
               aria-label="Close admin panel"
             >
               <X size={24} />
@@ -189,7 +189,7 @@ function AdminModal({ onClose, onError }) {
               className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'vendors' 
                   ? 'bg-blue-600 text-white active:bg-blue-700' 
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               Vendors
@@ -199,7 +199,7 @@ function AdminModal({ onClose, onError }) {
               className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'models' 
                   ? 'bg-blue-600 text-white active:bg-blue-700' 
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               Models
@@ -209,7 +209,7 @@ function AdminModal({ onClose, onError }) {
               className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'locations' 
                   ? 'bg-blue-600 text-white active:bg-blue-700' 
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               Locations
@@ -217,10 +217,10 @@ function AdminModal({ onClose, onError }) {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 text-gray-900 dark:text-gray-100">
           {loading ? (
             <div className="text-center py-12">
-              <p className="text-gray-600">Loading...</p>
+              <p className="text-gray-600 dark:text-gray-300">Loading...</p>
             </div>
           ) : activeTab === 'vendors' ? (
             <VendorsTab
@@ -285,7 +285,7 @@ function VendorsTab({
             value={newVendorName} 
             onChange={(e) => setNewVendorName(e.target.value)} 
             placeholder="Vendor name" 
-            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+            className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
             onKeyPress={(e) => e.key === 'Enter' && addVendor()} 
           />
           <button 
@@ -301,7 +301,7 @@ function VendorsTab({
         <h3 className="text-lg font-semibold mb-3">Existing Vendors ({vendors.length})</h3>
         <div className="space-y-2">
           {vendors.map(vendor => (
-            <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={vendor.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {editingVendor === vendor.id ? (
                 <input 
                   type="text" 
@@ -312,13 +312,13 @@ function VendorsTab({
                       updateVendor(vendor.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                   autoFocus 
                 />
               ) : (
                 <div className="flex-1">
-                  <span className="font-medium">{vendor.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{vendor.name}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300 ml-2">
                     ({vendor.model_count} models, {vendor.device_count} devices)
                   </span>
                 </div>
@@ -326,14 +326,14 @@ function VendorsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingVendor(vendor.id)} 
-                  className="p-2 text-blue-600 active:bg-blue-100 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="p-2 text-blue-600 dark:text-blue-400 active:bg-blue-100 dark:active:bg-blue-900/30 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Edit vendor"
                 >
                   <Edit2 size={18} />
                 </button>
                 <button 
                   onClick={() => deleteVendor(vendor.id)} 
-                  className="p-2 text-red-600 active:bg-red-100 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="p-2 text-red-600 dark:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Delete vendor"
                 >
                   <Trash2 size={18} />
@@ -342,7 +342,7 @@ function VendorsTab({
             </div>
           ))}
           {vendors.length === 0 && (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-500 dark:text-gray-300 text-center py-4">
               No vendors yet. Add your first vendor above.
             </p>
           )}
@@ -380,11 +380,11 @@ function ModelsTab({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
           <h3 className="text-lg font-semibold">Add New Model</h3>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-700 whitespace-nowrap">Vendor:</label>
+            <label className="text-sm text-gray-700 dark:text-gray-200 whitespace-nowrap">Vendor:</label>
             <select 
               value={selectedVendorForModel} 
               onChange={(e) => handleVendorChange(e.target.value)} 
-              className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation min-h-[44px]"
+              className="px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation min-h-[44px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             >
               <option value="">All Vendors</option>
               {vendors.map(vendor => (
@@ -394,7 +394,7 @@ function ModelsTab({
           </div>
         </div>
         {vendors.length === 0 ? (
-          <p className="text-amber-600 bg-amber-50 p-3 rounded-lg">
+          <p className="text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-3 rounded-lg">
             Please add at least one vendor first before adding models.
           </p>
         ) : (
@@ -404,7 +404,7 @@ function ModelsTab({
               value={newModelName} 
               onChange={(e) => setNewModelName(e.target.value)} 
               placeholder="Model name" 
-              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+              className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
               onKeyPress={(e) => e.key === 'Enter' && addModel()} 
             />
             <button 
@@ -424,13 +424,13 @@ function ModelsTab({
         </h3>
         <div className="space-y-2">
           {filteredModels.map(model => (
-            <div key={model.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={model.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {editingModel === model.id ? (
                 <div className="flex-1 flex gap-2">
                   <select 
                     defaultValue={model.vendor_id} 
                     onBlur={(e) => updateModel(model.id, model.name, e.target.value)} 
-                    className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     {vendors.map(vendor => (
                       <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
@@ -445,16 +445,16 @@ function ModelsTab({
                         updateModel(model.id, e.target.value, model.vendor_id); 
                       } 
                     }} 
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                     autoFocus 
                   />
                 </div>
               ) : (
                 <div className="flex-1">
-                  <span className="font-medium">{model.vendor_name}</span>
-                  <span className="text-gray-400 mx-2">→</span>
-                  <span className="font-medium">{model.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{model.vendor_name}</span>
+                  <span className="text-gray-400 dark:text-gray-500 mx-2">→</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{model.name}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300 ml-2">
                     ({model.device_count} devices)
                   </span>
                 </div>
@@ -462,14 +462,14 @@ function ModelsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingModel(model.id)} 
-                  className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
                   aria-label="Edit model"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button 
                   onClick={() => deleteModel(model.id)} 
-                  className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                   aria-label="Delete model"
                 >
                   <Trash2 size={16} />
@@ -478,12 +478,12 @@ function ModelsTab({
             </div>
           ))}
           {filteredModels.length === 0 && models.length > 0 && (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-500 dark:text-gray-300 text-center py-4">
               No models found for the selected vendor.
             </p>
           )}
           {models.length === 0 && (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-500 dark:text-gray-300 text-center py-4">
               No models yet. Add your first model above.
             </p>
           )}
@@ -513,7 +513,7 @@ function LocationsTab({
             value={newLocationName} 
             onChange={(e) => setNewLocationName(e.target.value)} 
             placeholder="Location name (e.g., Data Center, Office, Rack 1)" 
-            className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+            className="flex-1 px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
             onKeyPress={(e) => e.key === 'Enter' && addLocation()} 
           />
           <button 
@@ -529,7 +529,7 @@ function LocationsTab({
         <h3 className="text-lg font-semibold mb-3">Existing Locations ({locations.length})</h3>
         <div className="space-y-2">
           {locations.map(location => (
-            <div key={location.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={location.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               {editingLocation === location.id ? (
                 <input 
                   type="text" 
@@ -540,13 +540,13 @@ function LocationsTab({
                       updateLocation(location.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base" 
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                   autoFocus 
                 />
               ) : (
                 <div className="flex-1">
-                  <span className="font-medium">{location.name}</span>
-                  <span className="text-sm text-gray-500 ml-2">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">{location.name}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300 ml-2">
                     ({location.device_count} devices)
                   </span>
                 </div>
@@ -554,14 +554,14 @@ function LocationsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingLocation(location.id)} 
-                  className="p-1 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
                   aria-label="Edit location"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button 
                   onClick={() => deleteLocation(location.id)} 
-                  className="p-1 text-red-600 hover:bg-red-100 rounded transition-colors"
+                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                   aria-label="Delete location"
                 >
                   <Trash2 size={16} />
@@ -570,7 +570,7 @@ function LocationsTab({
             </div>
           ))}
           {locations.length === 0 && (
-            <p className="text-gray-500 text-center py-4">
+            <p className="text-gray-500 dark:text-gray-300 text-center py-4">
               No locations yet. Add your first location above.
             </p>
           )}

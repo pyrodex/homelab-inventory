@@ -102,27 +102,27 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content">
-        <div className="sticky top-0 bg-white z-10 p-4 md:p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">Bulk Operations</h2>
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Bulk Operations</h2>
           <button
             onClick={onClose}
-            className="p-2 -mr-2 text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+            className="p-2 -mr-2 text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-100 active:text-gray-800 dark:active:text-white transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Close modal"
           >
             <X size={24} />
           </button>
         </div>
         
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-6 text-gray-900 dark:text-gray-100">
           {/* Tabs */}
-          <div className="flex flex-col md:flex-row gap-2 mb-6 border-b border-gray-200">
+          <div className="flex flex-col md:flex-row gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
             <button
               onClick={() => setActiveTab('import')}
               className={`px-4 py-2.5 rounded-t-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'import'
                   ? 'bg-blue-600 text-white active:bg-blue-700'
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               <Upload size={18} className="inline mr-2" />
@@ -133,7 +133,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
               className={`px-4 py-2.5 rounded-t-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'export'
                   ? 'bg-blue-600 text-white active:bg-blue-700'
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               <Download size={18} className="inline mr-2" />
@@ -144,7 +144,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
               className={`px-4 py-2.5 rounded-t-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
                 activeTab === 'delete'
                   ? 'bg-blue-600 text-white active:bg-blue-700'
-                  : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
               }`}
             >
               <Trash2 size={18} className="inline mr-2" />
@@ -194,7 +194,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
                     value={importJson}
                     onChange={(e) => setImportJson(e.target.value)}
                     placeholder='[{"name": "Device 1", "device_type": "linux_server_physical", ...}, ...]'
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-mono text-sm min-h-[200px]"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base font-mono text-sm min-h-[200px] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     Paste JSON array of device objects. Required fields: name, device_type, ip_address, function, vendor_id, model_id, location_id, serial_number
@@ -209,7 +209,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
                     type="file"
                     accept=".csv"
                     onChange={handleFileChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                    className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   />
                   <p className="text-xs text-gray-500 mt-1">
                     CSV file with columns: name, device_type, ip_address, function, vendor, model, location, serial_number, networks, interface_type, poe_powered, poe_standards, monitoring_enabled
@@ -219,7 +219,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
 
               {importResult && (
                 <div className={`p-4 rounded-lg ${
-                  importResult.created > 0 ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'
+                  importResult.created > 0 ? 'bg-green-50 border border-green-200 dark:bg-green-900/30 dark:border-green-700' : 'bg-yellow-50 border border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-700'
                 }`}>
                   <p className="font-medium mb-2">
                     Import Results: {importResult.created} created, {importResult.failed} failed
@@ -287,7 +287,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
                 <select
                   value={exportType}
                   onChange={(e) => setExportType(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 >
                   <option value="all">All Devices</option>
                   {DEVICE_TYPES.map(type => (
@@ -318,7 +318,7 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
                   value={deleteIds}
                   onChange={(e) => setDeleteIds(e.target.value)}
                   placeholder="1, 2, 3, 4, 5"
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                  className="w-full px-3 py-2.5 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Enter device IDs separated by commas. Maximum 100 devices at once.
