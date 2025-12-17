@@ -5,16 +5,20 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from flask import current_app
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Alembic Config object
 config = context.config
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# Logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Use Flask SQLAlchemy metadata
 target_metadata = current_app.extensions['migrate'].db.metadata
+
+# Inject URL from Flask config (avoids relying on alembic.ini)
+sqlalchemy_url = current_app.config.get("SQLALCHEMY_DATABASE_URI")
+if sqlalchemy_url:
+    config.set_main_option("sqlalchemy.url", sqlalchemy_url)
 
 
 def run_migrations_offline():
