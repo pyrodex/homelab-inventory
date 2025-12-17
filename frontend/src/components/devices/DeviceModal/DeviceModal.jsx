@@ -489,7 +489,7 @@ function DeviceModal({ device, onClose, onSave, onError }) {
           >
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Networks
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -501,18 +501,18 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedNetworks.includes(network) 
                           ? 'bg-blue-600 text-white active:bg-blue-700' 
-                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
                       }`}
                     >
                       {network}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Select ALL to override other selections</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Select ALL to override other selections</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   Interface Types
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -524,18 +524,18 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedInterfaces.includes(iface) 
                           ? 'bg-purple-600 text-white active:bg-purple-700' 
-                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
                       }`}
                     >
                       {iface}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Select multiple interface types if applicable</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Select multiple interface types if applicable</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                   PoE Standards
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -547,34 +547,34 @@ function DeviceModal({ device, onClose, onSave, onError }) {
                       className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors touch-manipulation min-h-[44px] ${
                         selectedPoeStandards.includes(poe) 
                           ? 'bg-amber-600 text-white active:bg-amber-700' 
-                          : 'bg-gray-200 text-gray-700 active:bg-gray-300'
+                          : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
                       }`}
                     >
                       {poe}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Select applicable PoE standards for this device</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">Select applicable PoE standards for this device</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
                   <input 
                     type="checkbox" 
                     checked={formData.poe_powered} 
                     onChange={(e) => setFormData({ ...formData, poe_powered: e.target.checked })} 
                     className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
-                  <span className="text-sm font-medium text-gray-700">PoE Powered</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">PoE Powered</span>
                 </label>
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
                   <input 
                     type="checkbox" 
                     checked={formData.monitoring_enabled} 
                     onChange={(e) => setFormData({ ...formData, monitoring_enabled: e.target.checked })} 
                     className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
-                  <span className="text-sm font-medium text-gray-700">Monitoring Enabled</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Monitoring Enabled</span>
                 </label>
               </div>
             </div>
