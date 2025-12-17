@@ -14,6 +14,7 @@ COPY routes ./routes
 COPY services ./services
 COPY utils ./utils
 COPY migrations ./migrations
+COPY migrations/alembic.ini ./migrations/alembic.ini
 COPY scripts ./scripts
 RUN mkdir -p /app/data /app/data/backups && \
     chmod +x /app/scripts/*.py /app/scripts/*.sh 2>/dev/null || true
