@@ -17,7 +17,7 @@ import { DEVICE_TYPES } from './constants/deviceTypes';
 
 // Utils
 import { downloadBlob } from './utils/helpers';
-import { useTheme } from './hooks/useTheme';
+import { useTheme } from './hooks/useTheme.jsx';
 
 function App() {
   // State management
