@@ -64,6 +64,11 @@ def run_auto_migrations():
     Run database migrations automatically by default.
     Disable by setting AUTO_MIGRATE=false.
     """
+    migrations_dir = app.config.get('MIGRATIONS_DIR', os.path.join(os.path.dirname(__file__), 'migrations'))
+    if not os.path.isdir(migrations_dir):
+        logging.warning(f"Migrations directory not found at {migrations_dir}; skipping auto migrations.")
+        return
+
     auto_migrate_env = os.environ.get('AUTO_MIGRATE', 'true').lower()
     auto_migrate = auto_migrate_env not in ('false', '0', 'no', 'off')
     if not auto_migrate:
