@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -7,6 +7,7 @@ import DeviceList from './components/devices/DeviceList/DeviceList';
 import DeviceModal from './components/devices/DeviceModal/DeviceModal';
 import AdminModal from './components/admin/AdminModal/AdminModal';
 import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOperationsModal';
+import DiscoveryModal from './components/discovery/DiscoveryModal/DiscoveryModal';
 import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 
 // Services
@@ -29,6 +30,8 @@ function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [cloningDevice, setCloningDevice] = useState(null);
+  const [discoveryPrefill, setDiscoveryPrefill] = useState(null);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -190,10 +193,25 @@ function App() {
     setCloningDevice(clonedDevice);
   };
 
+  const handleDiscoveryAdd = (result) => {
+    setEditingDevice(null);
+    setCloningDevice(null);
+    setDiscoveryPrefill({
+      name: result.name || result.hostname || result.ip_address || result.ip || result.input || '',
+      device_type: result.device_type || 'icmp_only',
+      ip_address: result.ip_address || result.ip || result.input || '',
+      deviceFunction: result.deviceFunction || (result.hostname ? `Discovered host (${result.hostname})` : 'Discovered host'),
+      networks: 'LAN',
+      monitoring_enabled: true,
+    });
+    setShowAddModal(true);
+  };
+
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingDevice(null);
     setCloningDevice(null);
+    setDiscoveryPrefill(null);
   };
 
   const handleModalSave = () => {
@@ -267,7 +285,20 @@ function App() {
                   <span className="truncate">Bulk Ops</span>
                 </button>
                 <button 
-                  onClick={() => setShowAddModal(true)} 
+                  onClick={() => setShowDiscoveryModal(true)} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg active:bg-cyan-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                  aria-label="Discover devices"
+                >
+                  <Radar size={20} className="flex-shrink-0" />
+                  <span className="truncate">Discover</span>
+                </button>
+                <button 
+                  onClick={() => {
+                    setDiscoveryPrefill(null);
+                    setEditingDevice(null);
+                    setCloningDevice(null);
+                    setShowAddModal(true);
+                  }} 
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
                   aria-label="Add new device"
                 >
@@ -299,10 +330,22 @@ function App() {
                       </span>
                     </button>
                     <button
-                      onClick={() => { setShowAddModal(true); setShowActionMenu(false); }}
+                      onClick={() => { 
+                        setDiscoveryPrefill(null);
+                        setEditingDevice(null);
+                        setCloningDevice(null);
+                        setShowAddModal(true); 
+                        setShowActionMenu(false); 
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
                       <span className="flex items-center gap-2"><Plus size={18} /> Add Device</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowDiscoveryModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Radar size={18} /> Discover</span>
                     </button>
                     <button
                       onClick={() => { setShowBulkModal(true); setShowActionMenu(false); }}
@@ -477,7 +520,7 @@ function App() {
       {/* Modals */}
       {(showAddModal || editingDevice || cloningDevice) && (
         <DeviceModal 
-          device={editingDevice || cloningDevice} 
+          device={editingDevice || cloningDevice || discoveryPrefill} 
           onClose={handleModalClose} 
           onSave={handleModalSave}
           onError={setError}
@@ -488,6 +531,13 @@ function App() {
         <AdminModal 
           onClose={() => setShowAdminModal(false)} 
           onError={setError} 
+        />
+      )}
+      
+      {showDiscoveryModal && (
+        <DiscoveryModal 
+          onClose={() => setShowDiscoveryModal(false)}
+          onAddDevice={handleDiscoveryAdd}
         />
       )}
       
