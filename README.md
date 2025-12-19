@@ -24,6 +24,11 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Export Options**: Write Prometheus configs directly to disk or download as a ZIP archive
 - **Organized Exports**: Automatically organize Prometheus targets by monitor type and device category
 
+### Discovery
+- **Network Discovery**: Probe single IPs/hostnames, dashed IP ranges, or CIDR blocks
+- **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames
+- **Inline Add**: Add discovered devices one-by-one without leaving the results list
+
 ### User Interface
 - **Modern React UI**: Responsive interface built with React and Tailwind CSS
 - **Dark Mode with Auto Theme**: Light/dark themes with system-preference auto mode; all dialogs (Admin, Bulk Ops, Advanced Search, Device modals) are theme aware
@@ -84,6 +89,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - Flask-CORS for cross-origin resource sharing
 - Flask-Limiter for API rate limiting
 - Marshmallow for input validation and sanitization
+- iputils-ping for ICMP discovery (bundled in backend image) with Python ping3 fallback
 - PyYAML for Prometheus configuration generation
 - psutil for system metrics (optional)
 - pytest for testing framework
@@ -285,6 +291,8 @@ Edit `docker-compose.yaml` to customize:
 
 The application uses SQLite by default (`DATABASE_PATH`, default `homelab.db`). The database file is created if missing.
 
+On a brand-new database, core tables are bootstrapped automatically (after migrations) on startup.
+
 **Schema management (migrations):**
 - Flask-Migrate/Alembic manage schema. Migrations live in `backend/migrations/versions/`.
 - Auto-migration runs on startup by default (`AUTO_MIGRATE=true`). Set `AUTO_MIGRATE=false` to skip.
@@ -352,6 +360,16 @@ scrape_configs:
    - Monitoring Enabled checkbox
 4. Add monitors (e.g., Node Exporter on port 9100)
 5. Click **"Create Device"**
+
+### Discovering Devices
+
+1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **Discover**.
+2. Enter targets:
+   - Single IPs/hostnames (comma or newline separated)
+   - IP range (e.g., `192.168.1.10-192.168.1.20`)
+   - CIDR (e.g., `192.168.1.0/28`)
+3. Run discovery to see ICMP reachability (with RTT) and reverse DNS results.
+4. Click **Add Device** on any row to prefill and save a device while staying on the discovery results.
 
 ### Managing Vendors, Models, and Locations
 
