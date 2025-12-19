@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -7,6 +7,7 @@ import DeviceList from './components/devices/DeviceList/DeviceList';
 import DeviceModal from './components/devices/DeviceModal/DeviceModal';
 import AdminModal from './components/admin/AdminModal/AdminModal';
 import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOperationsModal';
+import DiscoveryModal from './components/discovery/DiscoveryModal/DiscoveryModal';
 import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 
 // Services
@@ -29,8 +30,11 @@ function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState(null);
   const [cloningDevice, setCloningDevice] = useState(null);
+  const [discoveryPrefill, setDiscoveryPrefill] = useState(null);
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showOtherActions, setShowOtherActions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
   const [error, setError] = useState(null);
@@ -190,10 +194,25 @@ function App() {
     setCloningDevice(clonedDevice);
   };
 
+  const handleDiscoveryAdd = (result) => {
+    setEditingDevice(null);
+    setCloningDevice(null);
+    setDiscoveryPrefill({
+      name: result.name || result.hostname || result.ip_address || result.ip || result.input || '',
+      device_type: result.device_type || 'icmp_only',
+      ip_address: result.ip_address || result.ip || result.input || '',
+      deviceFunction: result.deviceFunction || (result.hostname ? `Discovered host (${result.hostname})` : 'Discovered host'),
+      networks: 'LAN',
+      monitoring_enabled: true,
+    });
+    setShowAddModal(true);
+  };
+
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingDevice(null);
     setCloningDevice(null);
+    setDiscoveryPrefill(null);
   };
 
   const handleModalSave = () => {
@@ -214,7 +233,7 @@ function App() {
       />
       
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow overflow-hidden transition-colors">
+      <header className="bg-white dark:bg-gray-800 shadow overflow-visible transition-colors">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6 w-full">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="min-w-0 flex-shrink">
@@ -223,14 +242,19 @@ function App() {
             </div>
             <div className="w-full md:w-auto flex-shrink-0">
               {/* Desktop actions */}
-              <div className="hidden md:flex md:gap-3">
+              <div className="hidden md:flex md:flex-wrap md:justify-end md:items-center gap-3 relative">
                 <button 
-                  onClick={cycleTheme}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-lg active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
-                  aria-label="Toggle theme"
+                  onClick={() => {
+                    setDiscoveryPrefill(null);
+                    setEditingDevice(null);
+                    setCloningDevice(null);
+                    setShowAddModal(true);
+                  }} 
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                  aria-label="Add new device"
                 >
-                  {themeIcon}
-                  <span className="truncate">Theme: {themeLabel}</span>
+                  <Plus size={20} className="flex-shrink-0" />
+                  <span className="truncate">Add Device</span>
                 </button>
                 <button 
                   onClick={() => setShowAdminModal(true)} 
@@ -240,39 +264,59 @@ function App() {
                   <Settings size={20} className="flex-shrink-0" />
                   <span className="truncate">Admin</span>
                 </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowOtherActions(prev => !prev)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
+                    aria-haspopup="true"
+                    aria-expanded={showOtherActions}
+                  >
+                    <MoreHorizontal size={20} className="flex-shrink-0" />
+                    <span className="truncate">Other Actions</span>
+                    <ChevronDown size={16} className={`${showOtherActions ? 'rotate-180' : ''} transition-transform`} />
+                  </button>
+                  {showOtherActions && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20">
+                      <button
+                        onClick={() => { handleExportPrometheus('write'); setShowOtherActions(false); }}
+                        disabled={exporting}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-70"
+                      >
+                        <Check size={16} className="flex-shrink-0" />
+                        Write Prometheus
+                      </button>
+                      <button
+                        onClick={() => { handleExportPrometheus('download'); setShowOtherActions(false); }}
+                        disabled={exporting}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-70"
+                      >
+                        <Download size={16} className="flex-shrink-0" />
+                        Download Config
+                      </button>
+                      <button
+                        onClick={() => { setShowBulkModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <FileDown size={16} className="flex-shrink-0" />
+                        Bulk Ops
+                      </button>
+                      <button
+                        onClick={() => { setShowDiscoveryModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Radar size={16} className="flex-shrink-0" />
+                        Discover
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <button 
-                  onClick={() => handleExportPrometheus('write')} 
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg active:bg-green-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base disabled:opacity-70"
-                  aria-label="Write Prometheus files"
-                  disabled={exporting}
+                  onClick={cycleTheme}
+                  className="flex items-center justify-center p-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-full active:bg-gray-300 dark:active:bg-gray-600 transition-colors touch-manipulation min-h-[40px] min-w-[40px]"
+                  aria-label={`Toggle theme (current: ${themeLabel})`}
+                  title={`Theme: ${themeLabel}`}
                 >
-                  <Check size={20} className="flex-shrink-0" />
-                  <span className="truncate">Write Prometheus</span>
-                </button>
-                <button 
-                  onClick={() => handleExportPrometheus('download')} 
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg active:bg-blue-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base disabled:opacity-70"
-                  aria-label="Download configuration"
-                  disabled={exporting}
-                >
-                  <Download size={20} className="flex-shrink-0" />
-                  <span className="truncate">Download Config</span>
-                </button>
-                <button 
-                  onClick={() => setShowBulkModal(true)} 
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg active:bg-purple-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
-                  aria-label="Bulk operations"
-                >
-                  <FileDown size={20} className="flex-shrink-0" />
-                  <span className="truncate">Bulk Ops</span>
-                </button>
-                <button 
-                  onClick={() => setShowAddModal(true)} 
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
-                  aria-label="Add new device"
-                >
-                  <Plus size={20} className="flex-shrink-0" />
-                  <span className="truncate">Add Device</span>
+                  {themeIcon}
                 </button>
               </div>
 
@@ -299,10 +343,22 @@ function App() {
                       </span>
                     </button>
                     <button
-                      onClick={() => { setShowAddModal(true); setShowActionMenu(false); }}
+                      onClick={() => { 
+                        setDiscoveryPrefill(null);
+                        setEditingDevice(null);
+                        setCloningDevice(null);
+                        setShowAddModal(true); 
+                        setShowActionMenu(false); 
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
                       <span className="flex items-center gap-2"><Plus size={18} /> Add Device</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowDiscoveryModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Radar size={18} /> Discover</span>
                     </button>
                     <button
                       onClick={() => { setShowBulkModal(true); setShowActionMenu(false); }}
@@ -477,10 +533,11 @@ function App() {
       {/* Modals */}
       {(showAddModal || editingDevice || cloningDevice) && (
         <DeviceModal 
-          device={editingDevice || cloningDevice} 
+          device={editingDevice || cloningDevice || discoveryPrefill} 
           onClose={handleModalClose} 
           onSave={handleModalSave}
           onError={setError}
+          fromDiscovery={!!discoveryPrefill}
         />
       )}
       
@@ -488,6 +545,13 @@ function App() {
         <AdminModal 
           onClose={() => setShowAdminModal(false)} 
           onError={setError} 
+        />
+      )}
+      
+      {showDiscoveryModal && (
+        <DiscoveryModal 
+          onClose={() => setShowDiscoveryModal(false)}
+          onAddDevice={handleDiscoveryAdd}
         />
       )}
       

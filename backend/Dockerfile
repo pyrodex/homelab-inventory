@@ -2,8 +2,8 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install cron for scheduled backups
-RUN apt-get update && apt-get install -y --no-install-recommends cron && \
+# Install cron for scheduled backups and ping for ICMP discovery fallback
+RUN apt-get update && apt-get install -y --no-install-recommends cron iputils-ping && \
     rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

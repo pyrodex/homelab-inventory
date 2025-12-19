@@ -232,6 +232,26 @@ export const searchApi = {
   },
 };
 
+// Discovery API calls
+export const discoveryApi = {
+  run: async ({ targets = [], range = '', cidr = '' } = {}) => {
+    const normalizedTargets = Array.isArray(targets)
+      ? targets.filter(Boolean)
+      : targets
+        ? [targets]
+        : [];
+
+    return apiRequest('/discovery', {
+      method: 'POST',
+      body: JSON.stringify({
+        targets: normalizedTargets,
+        range: range || null,
+        cidr: cidr || null,
+      }),
+    });
+  },
+};
+
 // Health check API calls
 export const healthApi = {
   check: () => apiRequest('/health'),

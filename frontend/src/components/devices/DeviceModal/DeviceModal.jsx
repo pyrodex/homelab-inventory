@@ -31,7 +31,7 @@ const Section = ({ title, description, isOpen, onToggle, children }) => (
   </div>
 );
 
-function DeviceModal({ device, onClose, onSave, onError }) {
+function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }) {
   const normalizeDevice = (deviceData) => ({
     name: deviceData?.name || '', 
     device_type: deviceData?.device_type || 'linux_server_physical', 
@@ -235,10 +235,14 @@ function DeviceModal({ device, onClose, onSave, onError }) {
     if (!formData.ip_address?.trim()) missingFields.push('Address');
     if (!formData.device_type) missingFields.push('Device Type');
     if (!formData.deviceFunction?.trim()) missingFields.push('Device Function');
-    if (!formData.vendor_id) missingFields.push('Vendor');
-    if (!formData.model_id) missingFields.push('Model');
-    if (!formData.location_id) missingFields.push('Location');
-    if (!formData.serial_number?.trim()) missingFields.push('Serial Number');
+    
+    // When coming from discovery, allow users to add quickly without vendor/model/location/serial.
+    if (!fromDiscovery) {
+      if (!formData.vendor_id) missingFields.push('Vendor');
+      if (!formData.model_id) missingFields.push('Model');
+      if (!formData.location_id) missingFields.push('Location');
+      if (!formData.serial_number?.trim()) missingFields.push('Serial Number');
+    }
     
     if (missingFields.length > 0) {
       onError(`The following required fields are missing:\n\n${missingFields.join('\n')}`);

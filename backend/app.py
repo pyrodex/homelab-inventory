@@ -22,6 +22,7 @@ from routes.stats import register_stats_routes
 from routes.prometheus import register_prometheus_routes
 from routes.bulk import register_bulk_routes
 from routes.search import register_search_routes
+from routes.discovery import register_discovery_routes
 from routes.health import register_health_routes
 
 # Initialize Flask app
@@ -87,6 +88,18 @@ def run_auto_migrations():
 
 run_auto_migrations()
 
+# Ensure critical tables exist (for completely fresh databases or migration hiccups)
+def ensure_tables_exist():
+    core_tables = {'device', 'vendor', 'model', 'location', 'monitor'}
+    with app.app_context():
+        inspector = db.inspect(db.engine)
+        existing = set(inspector.get_table_names())
+        if not core_tables.issubset(existing):
+            missing = core_tables - existing
+            logging.warning(f"Missing core tables {missing}; running create_all() to bootstrap schema.")
+            db.create_all()
+            logging.info("Core tables created.")
+
 # CORS Configuration
 allowed_origins = app.config.get('CORS_ORIGINS', ['*'])
 if '*' in allowed_origins:
@@ -147,6 +160,7 @@ register_prometheus_routes(app, limiter)
 register_bulk_routes(app, limiter)
 register_search_routes(app, limiter)
 register_health_routes(app, limiter)
+register_discovery_routes(app, limiter)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
@@ -168,6 +182,14 @@ def init_database():
         db.create_all()
         logging.info("Database created successfully!")
 
+# Ensure database exists for brand new installs (no tables present)
+try:
+    init_database()
+    ensure_tables_exist()
+except Exception as exc:
+    logging.error(f"Database initialization failed: {exc}", exc_info=True)
+
 if __name__ == '__main__':
     init_database()
+    ensure_tables_exist()
     app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', False))
