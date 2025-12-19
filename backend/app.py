@@ -170,6 +170,12 @@ def init_database():
         db.create_all()
         logging.info("Database created successfully!")
 
+# Ensure database exists for brand new installs (no tables present)
+try:
+    init_database()
+except Exception as exc:
+    logging.error(f"Database initialization failed: {exc}", exc_info=True)
+
 if __name__ == '__main__':
     init_database()
     app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', False))
