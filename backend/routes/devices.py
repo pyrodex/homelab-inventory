@@ -6,7 +6,7 @@ from flask_limiter import Limiter
 from marshmallow import ValidationError as MarshmallowValidationError
 from datetime import datetime
 
-from models import db, Device, DeviceHistory
+from models import db, Device, DeviceHistory, Vendor, Model, Location
 from utils.history import extract_device_state, compute_diff
 from validators import DeviceSchema
 from exceptions import DatabaseError, ReadOnlyDatabaseError
@@ -28,6 +28,49 @@ def register_device_routes(app, limiter):
     limiter.limit("20 per minute")(update_device)
     limiter.limit("20 per minute")(delete_device)
     limiter.limit("60 per minute")(get_device_history)
+
+
+def _collect_lookup_ids(history_entries):
+    """Collect referenced foreign key ids from a list of history entries."""
+    id_sets = {
+        'vendor_id': set(),
+        'model_id': set(),
+        'location_id': set(),
+    }
+    for entry in history_entries:
+        for field, change in (entry.diff or {}).items():
+            if field in id_sets:
+                for value in (change.get('old'), change.get('new')):
+                    if isinstance(value, int):
+                        id_sets[field].add(value)
+    return id_sets
+
+
+def _build_lookup_maps(id_sets):
+    """Return mapping dicts for foreign key fields to human-readable names."""
+    lookups = {}
+    if id_sets.get('vendor_id'):
+        lookups['vendor_id'] = {v.id: v.name for v in Vendor.query.filter(Vendor.id.in_(id_sets['vendor_id'])).all()}
+    if id_sets.get('model_id'):
+        lookups['model_id'] = {m.id: m.name for m in Model.query.filter(Model.id.in_(id_sets['model_id'])).all()}
+    if id_sets.get('location_id'):
+        lookups['location_id'] = {location.id: location.name for location in Location.query.filter(Location.id.in_(id_sets['location_id'])).all()}
+    return lookups
+
+
+def _format_display_diff(diff, lookups):
+    """Create a display-friendly diff that swaps ids for names when possible."""
+    display_diff = {}
+    for field, change in (diff or {}).items():
+        display_change = {
+            'old': change.get('old'),
+            'new': change.get('new')
+        }
+        if field in lookups:
+            display_change['old_label'] = lookups[field].get(change.get('old'))
+            display_change['new_label'] = lookups[field].get(change.get('new'))
+        display_diff[field] = display_change
+    return display_diff
 
 
 @devices_bp.route('', methods=['GET'])
@@ -249,8 +292,23 @@ def get_device_history(device_id):
         total = query.count()
         items = query.offset(offset).limit(limit).all()
 
+        id_sets = _collect_lookup_ids(items)
+        lookup_maps = _build_lookup_maps(id_sets)
+
+        items_payload = []
+        for item in items:
+            items_payload.append({
+                'id': item.id,
+                'device_id': item.device_id,
+                'change_type': item.change_type,
+                'diff': item.diff,
+                'display_diff': _format_display_diff(item.diff, lookup_maps),
+                'summary': item.summary,
+                'created_at': item.created_at.isoformat()
+            })
+
         return success_response({
-            'items': [item.to_dict() for item in items],
+            'items': items_payload,
             'total': total,
             'limit': limit,
             'offset': offset

@@ -9,6 +9,22 @@ import {
   POE_STANDARDS 
 } from '../../../constants/deviceTypes';
 
+const FIELD_LABELS = {
+  name: 'Device Name',
+  device_type: 'Device Type',
+  ip_address: 'Address',
+  deviceFunction: 'Device Function',
+  vendor_id: 'Vendor',
+  model_id: 'Model',
+  location_id: 'Location',
+  serial_number: 'Serial Number',
+  networks: 'Networks',
+  interface_type: 'Interface Type',
+  poe_powered: 'PoE Powered',
+  poe_standards: 'PoE Standards',
+  monitoring_enabled: 'Monitoring Enabled',
+};
+
 const Section = ({ title, description, isOpen, onToggle, children }) => (
   <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm transition-colors">
     <button
@@ -226,6 +242,16 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     if (value === '') return 'Empty';
     return value;
+  };
+
+  const getFieldLabel = (field) => FIELD_LABELS[field] || field.replace(/_/g, ' ');
+
+  const getDisplayChange = (entry, field, change) => {
+    const displayChange = entry.display_diff?.[field];
+    return {
+      old: displayChange?.old_label ?? displayChange?.old ?? change?.old,
+      new: displayChange?.new_label ?? displayChange?.new ?? change?.new,
+    };
   };
 
   const validateForm = () => {
@@ -695,19 +721,22 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }
                             {entry.change_type.replace('_', ' ')}
                           </span>
                         </div>
-                        {entry.diff && Object.keys(entry.diff).length > 0 ? (
+                        {((entry.diff && Object.keys(entry.diff).length > 0) || (entry.display_diff && Object.keys(entry.display_diff).length > 0)) ? (
                           <div className="mt-3 space-y-2">
-                            {Object.entries(entry.diff).map(([field, change]) => (
-                              <div key={field} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{field}</span>
-                                <div className="text-sm text-gray-900 dark:text-gray-100 sm:text-right">
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 pr-1">from</span>
-                                  {formatValue(change.old)}
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 px-1">to</span>
-                                  {formatValue(change.new)}
+                            {Object.entries(entry.diff || entry.display_diff || {}).map(([field, change]) => {
+                              const displayChange = getDisplayChange(entry, field, change);
+                              return (
+                                <div key={field} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{getFieldLabel(field)}</span>
+                                  <div className="text-sm text-gray-900 dark:text-gray-100 sm:text-right">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 pr-1">from</span>
+                                    {formatValue(displayChange.old)}
+                                    <span className="text-xs text-gray-500 dark:text-gray-400 px-1">to</span>
+                                    {formatValue(displayChange.new)}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         ) : (
                           <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">No field changes recorded.</p>
