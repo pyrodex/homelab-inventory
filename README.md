@@ -70,6 +70,11 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Database Statistics**: Device counts and database connectivity status
 - **Device History API**: `/api/devices/<id>/history` for audit visibility
 
+## 📸 Screenshots
+
+- [Light theme gallery](screenshots/light/README.md)
+- [Dark theme gallery](screenshots/dark/README.md)
+
 ## 🏗️ Architecture
 
 ### Technology Stack
