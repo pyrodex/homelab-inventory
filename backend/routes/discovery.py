@@ -15,6 +15,16 @@ from utils.response import success_response, validation_error_response
 
 discovery_bp = Blueprint('discovery', __name__)
 
+# Optional pure-Python ping fallback (no system binary)
+try:
+    import ping3  # type: ignore
+
+    ping3.verbosity(0)
+    PING3_AVAILABLE = True
+except Exception:
+    ping3 = None
+    PING3_AVAILABLE = False
+
 # Guardrails to avoid runaway scans
 MAX_TARGETS = 256
 DEFAULT_TIMEOUT = 1.5  # seconds
@@ -83,14 +93,11 @@ def _build_ping_command(target: str, timeout: float) -> List[str]:
     """Build a platform-aware ping command."""
     system = platform.system().lower()
     count_flag = "-c" if system != "windows" else "-n"
+    # Use milliseconds everywhere for consistency; Linux -W also accepts ms.
     timeout_flag = "-W" if system != "windows" else "-w"
+    timeout_ms = max(1, int(timeout * 1000))
 
-    if system in ("windows", "darwin"):
-        timeout_value = str(int(timeout * 1000))  # milliseconds
-    else:
-        timeout_value = str(max(1, int(round(timeout))))  # seconds (Linux)
-
-    return ["ping", count_flag, "1", timeout_flag, timeout_value, target]
+    return ["ping", count_flag, "1", timeout_flag, str(timeout_ms), target]
 
 
 def _ping_target(target: str) -> Tuple[bool, float, str]:
@@ -123,10 +130,31 @@ def _ping_target(target: str) -> Tuple[bool, float, str]:
     except subprocess.TimeoutExpired:
         return False, None, "Ping timed out"
     except FileNotFoundError:
-        return False, None, "Ping utility not available on server"
+        # Fallback to pure Python ping if available (avoids missing binary)
+        return _ping_target_ping3(target)
     except Exception as exc:  # pragma: no cover - defensive
         logging.warning(f"Ping failed for {target}: {exc}")
+        # Try python fallback before giving up
+        fallback_reachable, fallback_rtt, fallback_err = _ping_target_ping3(target)
+        if fallback_reachable or fallback_err is None:
+            return fallback_reachable, fallback_rtt, fallback_err
         return False, None, str(exc)
+
+
+def _ping_target_ping3(target: str) -> Tuple[bool, float, str]:
+    """Fallback ping using ping3 library when system ping is unavailable."""
+    if not PING3_AVAILABLE:
+        return False, None, "Ping utility not available on server"
+
+    try:
+        rtt_seconds = ping3.ping(target, timeout=DEFAULT_TIMEOUT, unit="s", privileged=False)
+        if rtt_seconds is None:
+            return False, None, "No response"
+        rtt_ms = float(rtt_seconds) * 1000.0
+        return True, rtt_ms, None
+    except Exception as exc:
+        logging.debug(f"ping3 failed for {target}: {exc}")
+        return False, None, "Ping failed (ping3)"
 
 
 def _resolve_ip(target: str) -> str:

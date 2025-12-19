@@ -524,6 +524,7 @@ function App() {
           onClose={handleModalClose} 
           onSave={handleModalSave}
           onError={setError}
+          fromDiscovery={!!discoveryPrefill}
         />
       )}
       
