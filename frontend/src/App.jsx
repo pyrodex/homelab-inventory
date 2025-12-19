@@ -233,7 +233,7 @@ function App() {
       />
       
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow overflow-hidden transition-colors">
+      <header className="bg-white dark:bg-gray-800 shadow overflow-visible transition-colors">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6 w-full">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div className="min-w-0 flex-shrink">
