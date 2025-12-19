@@ -88,6 +88,18 @@ def run_auto_migrations():
 
 run_auto_migrations()
 
+# Ensure critical tables exist (for completely fresh databases or migration hiccups)
+def ensure_tables_exist():
+    core_tables = {'device', 'vendor', 'model', 'location', 'monitor'}
+    with app.app_context():
+        inspector = db.inspect(db.engine)
+        existing = set(inspector.get_table_names())
+        if not core_tables.issubset(existing):
+            missing = core_tables - existing
+            logging.warning(f"Missing core tables {missing}; running create_all() to bootstrap schema.")
+            db.create_all()
+            logging.info("Core tables created.")
+
 # CORS Configuration
 allowed_origins = app.config.get('CORS_ORIGINS', ['*'])
 if '*' in allowed_origins:
@@ -173,9 +185,11 @@ def init_database():
 # Ensure database exists for brand new installs (no tables present)
 try:
     init_database()
+    ensure_tables_exist()
 except Exception as exc:
     logging.error(f"Database initialization failed: {exc}", exc_info=True)
 
 if __name__ == '__main__':
     init_database()
+    ensure_tables_exist()
     app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', False))
