@@ -47,6 +47,9 @@ services:
   sqlite-web:
     image: coleifer/sqlite-web
     container_name: homelab-inventory-sqlite-web
+    depends_on:
+      backend:
+        condition: service_healthy
     environment:
       - SQLITE_DATABASE=homelab.db
     volumes:
