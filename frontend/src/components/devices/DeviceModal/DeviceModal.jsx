@@ -238,9 +238,8 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }
   };
 
   const formatValue = (value) => {
-    if (value === null || value === undefined) return '—';
+    if (value === null || value === undefined || value === '') return 'Empty';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (value === '') return 'Empty';
     return value;
   };
 
