@@ -27,7 +27,7 @@ const FIELD_LABELS = {
 };
 
 const formatValue = (value) => {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined || value === '') return 'Empty';
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   return String(value);
