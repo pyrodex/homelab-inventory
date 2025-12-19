@@ -19,6 +19,14 @@ mkdir -p "${BACKUP_DIRECTORY:-/app/data/backups}"
 # Start cron daemon
 cron
 
-# Execute the main application command
-exec "$@"
+# Drop to non-root for the application process (default: app:app -> UID/GID 1000)
+RUN_AS_USER="${RUN_AS_USER:-app}"
+RUN_AS_GROUP="${RUN_AS_GROUP:-app}"
+
+if command -v gosu >/dev/null 2>&1; then
+  exec gosu "${RUN_AS_USER}:${RUN_AS_GROUP}" "$@"
+else
+  # Fallback: run without dropping privileges (should not happen in our image)
+  exec "$@"
+fi
 
