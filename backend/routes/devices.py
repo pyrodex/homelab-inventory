@@ -27,6 +27,7 @@ def register_device_routes(app, limiter):
     limiter.limit("20 per minute")(create_device)
     limiter.limit("20 per minute")(update_device)
     limiter.limit("20 per minute")(delete_device)
+    limiter.limit("60 per minute")(get_all_history)
     limiter.limit("60 per minute")(get_device_history)
 
 
@@ -71,6 +72,78 @@ def _format_display_diff(diff, lookups):
             display_change['new_label'] = lookups[field].get(change.get('new'))
         display_diff[field] = display_change
     return display_diff
+
+
+@devices_bp.route('/history', methods=['GET'])
+def get_all_history():
+    """Retrieve change history across all devices with pagination."""
+    try:
+        limit_param = request.args.get('limit', default='50')
+        offset = request.args.get('offset', default=0, type=int)
+
+        offset = 0 if offset is None or offset < 0 else offset
+
+        limit = None
+        if limit_param and str(limit_param).lower() != 'all':
+            try:
+                limit_int = int(limit_param)
+            except (TypeError, ValueError):
+                return validation_error_response({'limit': ['Invalid limit value']})
+            limit = 1 if limit_int < 1 else min(limit_int, 500)
+
+        query = DeviceHistory.query.order_by(DeviceHistory.created_at.desc())
+        total = query.count()
+
+        history_query = query
+        if offset:
+            history_query = history_query.offset(offset)
+        if limit is not None:
+            history_query = history_query.limit(limit)
+
+        items = history_query.all()
+
+        id_sets = _collect_lookup_ids(items)
+        lookup_maps = _build_lookup_maps(id_sets)
+
+        device_ids = {entry.device_id for entry in items if entry.device_id}
+        device_lookup = {}
+        if device_ids:
+            device_lookup = {
+                d.id: {
+                    'name': d.name,
+                    'device_type': d.device_type,
+                    'ip_address': d.ip_address
+                }
+                for d in Device.query.filter(Device.id.in_(device_ids)).all()
+            }
+
+        items_payload = []
+        for item in items:
+            device_info = device_lookup.get(item.device_id, {})
+            items_payload.append({
+                'id': item.id,
+                'device_id': item.device_id,
+                'device_name': device_info.get('name'),
+                'device_type': device_info.get('device_type'),
+                'device_ip': device_info.get('ip_address'),
+                'change_type': item.change_type,
+                'diff': item.diff,
+                'display_diff': _format_display_diff(item.diff, lookup_maps),
+                'summary': item.summary,
+                'created_at': item.created_at.isoformat()
+            })
+
+        effective_limit = limit if limit is not None else (total if total else 0)
+
+        return success_response({
+            'items': items_payload,
+            'total': total,
+            'limit': effective_limit,
+            'offset': offset
+        })
+    except Exception as e:
+        logging.error(f"Failed to fetch all device history: {e}", exc_info=True)
+        return error_response("Failed to fetch device history due to an internal error", status_code=500, error_code='DATABASE_ERROR')
 
 
 @devices_bp.route('', methods=['GET'])

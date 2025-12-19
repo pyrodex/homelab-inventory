@@ -15,7 +15,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Multiple Device Types**: Support for 13+ device types including Linux/FreeBSD servers, network equipment, cameras, and specialized devices
 - **Location Organization**: Organize devices by physical or logical locations (e.g., Data Center, Office, Rack 1)
 - **Vendor & Model Management**: Maintain a catalog of vendors and models for consistent device tracking
-- **Device History & Change Tracking**: Automatic audit log for device create/update/delete and bulk import/delete, with per-device history endpoint and UI timeline
+- **Device History & Change Tracking**: Automatic audit log for device create/update/delete and bulk import/delete, with per-device history endpoint and UI timeline plus a global history view (paginated 50/100/250/500/all) under Other Actions
 
 ### Monitoring Integration
 - **Prometheus Export**: Automatically generate Prometheus target configurations from your inventory
@@ -438,7 +438,7 @@ The export organizes targets by monitor type:
 - **Clone**: Click the clone icon to duplicate a device (useful for similar devices)
 - **Toggle Monitoring**: Click the check/X icon to enable/disable monitoring
 - **Delete**: Click the trash icon to remove a device (with confirmation)
-- **View History**: In the device modal, the History tab shows per-device change log with field-level diffs
+- **View History**: In the device modal, the History tab shows per-device change log with field-level diffs; use **Other Actions → History** for a global, paginated history across all devices (50/100/250/500/all)
 
 ## 🔌 API Documentation
 
@@ -453,6 +453,7 @@ All API endpoints are prefixed with `/api`
 - `GET /api/devices` - Get all devices (optional `?type=<device_type>` filter)
 - `GET /api/devices/<id>` - Get device by ID
 - `GET /api/devices/<id>/history` - Get device change history (supports `limit`/`offset`)
+- `GET /api/devices/history` - Get change history across all devices (supports `limit`/`offset`, accepts `limit=all`)
 - `POST /api/devices` - Create new device
 - `PUT /api/devices/<id>` - Update device
 - `DELETE /api/devices/<id>` - Delete device

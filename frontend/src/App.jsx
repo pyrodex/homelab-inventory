@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -9,6 +9,7 @@ import AdminModal from './components/admin/AdminModal/AdminModal';
 import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOperationsModal';
 import DiscoveryModal from './components/discovery/DiscoveryModal/DiscoveryModal';
 import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
+import HistoryModal from './components/history/HistoryModal.jsx';
 
 // Services
 import { deviceApi, statsApi, prometheusApi } from './services/api';
@@ -34,6 +35,7 @@ function App() {
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showOtherActions, setShowOtherActions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
@@ -301,6 +303,13 @@ function App() {
                         Bulk Ops
                       </button>
                       <button
+                        onClick={() => { setShowHistoryModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <History size={16} className="flex-shrink-0" />
+                        History
+                      </button>
+                      <button
                         onClick={() => { setShowDiscoveryModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
@@ -365,6 +374,12 @@ function App() {
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
                       <span className="flex items-center gap-2"><FileDown size={18} /> Bulk Ops</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowHistoryModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><History size={18} /> History</span>
                     </button>
                     <button
                       onClick={() => { handleExportPrometheus('download'); setShowActionMenu(false); }}
@@ -569,6 +584,12 @@ function App() {
             fetchStats();
           }}
           onError={setError}
+        />
+      )}
+      
+      {showHistoryModal && (
+        <HistoryModal
+          onClose={() => setShowHistoryModal(false)}
         />
       )}
       
