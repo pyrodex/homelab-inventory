@@ -5,7 +5,7 @@ Flask-Limiter==3.7.0
 Flask-Migrate==4.0.7
 SQLAlchemy==2.0.37
 alembic==1.14.0
-marshmallow==3.22.0
+marshmallow==3.26.2
 PyYAML==6.0.2
 psutil==6.1.0
 pytest==8.3.3
