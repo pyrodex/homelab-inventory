@@ -112,55 +112,16 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ```
 homelab-inventory/
-├── backend/
-│   ├── app.py              # Flask application entry point
-│   ├── config.py           # Configuration classes (Development/Production/Testing)
-│   ├── models.py            # SQLAlchemy database models
-│   ├── validators.py        # Marshmallow schemas for input validation
-│   ├── exceptions.py        # Custom exception classes
-│   ├── routes/              # API route blueprints
-│   │   ├── devices.py       # Device CRUD operations
-│   │   ├── monitors.py      # Monitor management
-│   │   ├── admin.py         # Vendor/Model/Location management
-│   │   ├── stats.py         # Statistics endpoints
-│   │   ├── prometheus.py    # Prometheus export
-│   │   ├── bulk.py          # Bulk operations (import/export/delete)
-│   │   ├── search.py        # Advanced search endpoints
-│   │   └── health.py        # Health check endpoints
-│   ├── services/            # Business logic services
-│   │   └── prometheus_service.py  # Prometheus export logic
-│   ├── tests/               # Test suite
-│   │   ├── test_models.py   # Model tests
-│   │   └── test_api.py     # API endpoint tests
-│   ├── migrations/           # Database migration scripts (Flask-Migrate)
-│   ├── pytest.ini           # Pytest configuration
-│   ├── Dockerfile           # Backend container definition
-│   └── requirements.txt     # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   │   ├── admin/       # Administration components
-│   │   │   ├── bulk/        # Bulk operations modal
-│   │   │   ├── common/      # Shared components (ErrorAlert, etc.)
-│   │   │   ├── devices/     # Device-related components
-│   │   │   └── search/      # Advanced search component
-│   │   ├── constants/       # Application constants (device types, etc.)
-│   │   ├── services/        # API service layer
-│   │   ├── utils/           # Utility functions
-│   │   ├── App.jsx          # Main application component
-│   │   ├── index.css        # Global styles (with iOS optimizations)
-│   │   └── main.jsx         # Application entry point
-│   ├── Dockerfile           # Frontend container definition
-│   ├── nginx.conf           # Nginx configuration
-│   ├── package.json         # Node.js dependencies
-│   ├── tailwind.config.cjs  # Tailwind CSS configuration
-│   └── vite.config.js       # Vite configuration
-├── data/                    # Database storage (created on first run)
-├── targets/                 # Prometheus export directory (created on first run)
-├── build.sh                 # Build and deployment script
-├── docker-compose.yaml.example  # Docker Compose example
+├── backend/                 # Flask API, migrations, services, scripts, tests
+├── frontend/                # React UI + nginx reverse proxy for /api
+├── docker-compose.yaml      # Default stack (frontend, backend, sqlite-web)
+├── docker-compose.yaml.example
+├── BACKUP_README.md         # Standalone backup guide
+├── screenshots/             # Light/dark galleries
+├── targets/                 # Prometheus export directory (created at runtime)
 └── README.md                # This file
 ```
+The `data/` directory (SQLite DB + backups) is created on first run.
 
 ## 📋 Prerequisites
 
@@ -178,7 +139,7 @@ For local development:
 
 ### Using Docker Compose (Recommended)
 
-The application uses pre-built container images from GitHub Container Registry, so no build step is required!
+The repo ships with a ready-to-run Compose file that pulls the pre-built images published from this repository—no local build required.
 
 1. **Clone the repository:**
    ```bash
@@ -186,25 +147,28 @@ The application uses pre-built container images from GitHub Container Registry, 
    cd homelab-inventory
    ```
 
-2. **Set up Docker Compose:**
+2. **Set up Docker Compose (optional clean copy):**
    ```bash
    cp docker-compose.yaml.example docker-compose.yaml
    ```
+   The included `docker-compose.yaml` already points to the published images if you just want to `up` and go.
 
 3. **Start the containers:**
    ```bash
    docker compose up -d
    ```
 
-   The images will be automatically pulled from GitHub Container Registry:
-   - `ghcr.io/<your-username>/homelab-inventory/backend:latest`
-   - `ghcr.io/<your-username>/homelab-inventory/frontend:latest`
+   The default images come from GitHub Container Registry for this repo:
+   - `ghcr.io/pyrodex/homelab-inventory/backend:latest`
+   - `ghcr.io/pyrodex/homelab-inventory/frontend:latest`
+
+   If you fork/publish your own images, update the `image:` fields accordingly.
 
 4. **Access the application:**
    - **Web UI**: http://localhost:5000
    - **SQLite Web Interface** (optional): http://localhost:5001
 
-> **Note:** If you prefer to build the images locally, you can use `./build.sh` or manually run `docker compose build` and update `docker-compose.yaml` to use `build:` instead of `image:`.
+> **Note:** If you prefer to build the images locally, run `docker compose build` (or switch `image:` to `build:` in `docker-compose.yaml`) and push to your own registry if desired.
 
 ### Manual Setup
 
@@ -280,6 +244,7 @@ The application uses pre-built container images from GitHub Container Registry, 
 | `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
 | `BACKUP_DIRECTORY` | Directory for database backups | `/app/data/backups` |
 | `BACKUP_RETENTION_DAYS` | Number of days to keep backups before cleanup | `30` |
+| `BACKUP_SCHEDULE` | Cron schedule for automatic backups | `0 2 * * *` |
 | `SECRET_KEY` | Flask secret key (change in production!) | `dev-secret-key-change-in-production` |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 
@@ -528,6 +493,11 @@ All API endpoints are prefixed with `/api`
   - Returns: Database status, system metrics (CPU, memory, disk), device counts
   - Requires psutil for system metrics (gracefully degrades if unavailable)
 
+#### Discovery
+- `POST /api/discovery` - Probe IPs/hostnames/ranges/CIDRs with ICMP + reverse DNS
+  - Body supports `targets` (array or comma/newline string), `range` (`192.168.1.10-192.168.1.20`), and `cidr` (`192.168.1.0/28`)
+  - Returns reachability summary, RTT (ms), resolved IP, and PTR hostname when available
+
 ### API Response Format
 
 All API responses follow a standardized format:
@@ -757,7 +727,7 @@ The CI/CD pipeline automatically:
   - Version tags (e.g., `v1.0.0`, `1.0`, `1`) when git tags are created
   - Branch names for feature branches
   - SHA-based tags for traceability
-- **Pushes to GitHub Container Registry** at `ghcr.io/<username>/homelab-inventory/backend` and `ghcr.io/<username>/homelab-inventory/frontend`
+- **Pushes to GitHub Container Registry** at `ghcr.io/pyrodex/homelab-inventory/backend` and `ghcr.io/pyrodex/homelab-inventory/frontend` (update the namespace if you publish from a fork)
 - **Uses build cache** for faster subsequent builds
 
 ### Workflow Triggers
@@ -780,10 +750,10 @@ The images will be automatically pulled from GitHub Container Registry.
 
 ### Image Names
 
-- **Backend**: `ghcr.io/<username>/homelab-inventory/backend:latest`
-- **Frontend**: `ghcr.io/<username>/homelab-inventory/frontend:latest`
+- **Backend**: `ghcr.io/pyrodex/homelab-inventory/backend:latest`
+- **Frontend**: `ghcr.io/pyrodex/homelab-inventory/frontend:latest`
 
-Replace `<username>` with your GitHub username or organization name.
+If you publish under a different namespace (e.g., your fork), update the image names in `docker-compose.yaml`.
 
 ### Viewing Builds
 
@@ -796,14 +766,10 @@ Replace `<username>` with your GitHub username or organization name.
 For local development and testing, you can still build images locally:
 
 ```bash
-# Build locally
 docker compose -f docker-compose.yaml build
-
-# Or use the build script
-./build.sh
 ```
 
-Update `docker-compose.yaml` to use `build:` instead of `image:` if you want to build locally.
+Update `docker-compose.yaml` to use `build:` instead of `image:` if you want to build locally or push to your own registry.
 
 ## 💾 Database Backup & Restore
 
@@ -1127,7 +1093,7 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [ ] Multi-user support with role-based access
 - [ ] Device templates and presets
 - [ ] Integration with other monitoring systems (Grafana, etc.)
-- [ ] Automated device discovery
+- [ ] Scheduled/recurring discovery runs with notifications
 - [ ] Internationalization (i18n) support
 - [ ] Caching layer (Redis) for improved performance
 - [ ] API documentation (OpenAPI/Swagger)
