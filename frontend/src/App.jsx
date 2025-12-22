@@ -32,6 +32,7 @@ function App() {
   const [editingDevice, setEditingDevice] = useState(null);
   const [cloningDevice, setCloningDevice] = useState(null);
   const [discoveryPrefill, setDiscoveryPrefill] = useState(null);
+  const [allDevices, setAllDevices] = useState([]);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -106,6 +107,19 @@ function App() {
     }
   };
 
+  const fetchAllDevices = async () => {
+    try {
+      const data = await deviceApi.getAll();
+      setAllDevices(data);
+    } catch (err) {
+      console.error('Failed to fetch all devices:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllDevices();
+  }, []);
+
   const handleSearchResults = (results) => {
     setSearchResults(results);
     if (results) {
@@ -175,6 +189,7 @@ function App() {
       await deviceApi.delete(pendingDelete.id);
       fetchDevices();
       fetchStats();
+      fetchAllDevices();
     } catch (err) {
       console.error('Failed to delete device:', err);
       setError(err.message || 'Failed to delete device');
@@ -210,6 +225,14 @@ function App() {
     setShowAddModal(true);
   };
 
+  const handleDiscoveryEdit = (device) => {
+    setDiscoveryPrefill(null);
+    setCloningDevice(null);
+    setShowAddModal(false);
+    setEditingDevice(device);
+    setShowDiscoveryModal(false);
+  };
+
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingDevice(null);
@@ -220,6 +243,7 @@ function App() {
   const handleModalSave = () => {
     fetchDevices();
     fetchStats();
+    fetchAllDevices();
     handleModalClose();
   };
 
@@ -567,6 +591,8 @@ function App() {
         <DiscoveryModal 
           onClose={() => setShowDiscoveryModal(false)}
           onAddDevice={handleDiscoveryAdd}
+          onEditDevice={handleDiscoveryEdit}
+          existingDevices={allDevices}
         />
       )}
       
