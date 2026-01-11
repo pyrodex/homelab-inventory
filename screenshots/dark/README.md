@@ -27,3 +27,5 @@ A quick gallery of the dark theme UI states.
 - Search & Filters
   ![Search & Filters](./search.png)
 
+
+

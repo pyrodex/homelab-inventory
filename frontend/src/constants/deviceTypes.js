@@ -16,7 +16,7 @@ export const DEVICE_TYPES = [
 
 export const MONITOR_TYPES = [
   { value: 'node_exporter', label: 'Node Exporter', defaultPort: 9100 },
-  { value: 'smartprom', label: 'SmartProm', defaultPort: 9902 },
+  { value: 'smartctl_exporter', label: 'smartctl_exporter', defaultPort: 9633 },
   { value: 'snmp', label: 'SNMP', defaultPort: 161 },
   { value: 'icmp', label: 'ICMP', defaultPort: null },
   { value: 'http', label: 'HTTP', defaultPort: 80 },

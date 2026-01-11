@@ -142,7 +142,7 @@ class MonitorSchema(Schema):
     monitor_type = fields.Str(
         required=True,
         validate=validate.OneOf([
-            'node_exporter', 'smartprom', 'snmp', 'icmp', 'http',
+            'node_exporter', 'smartctl_exporter', 'snmp', 'icmp', 'http',
             'https', 'dns', 'ipmi', 'nut', 'docker'
         ])
     )

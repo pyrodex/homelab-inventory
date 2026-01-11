@@ -21,7 +21,7 @@ DEVICE_TYPES = [
 ]
 
 MONITORING_TYPES = [
-    'node_exporter', 'smartprom', 'snmp', 'icmp', 'http',
+    'node_exporter', 'smartctl_exporter', 'snmp', 'icmp', 'http',
     'https', 'dns', 'ipmi', 'nut', 'docker'
 ]
 
@@ -60,7 +60,7 @@ def build_prometheus_targets(devices):
             elif ':' not in target:
                 default_ports = {
                     'node_exporter': 9100,
-                    'smartprom': 9902,
+                    'smartctl_exporter': 9633,
                     'snmp': 161,
                     'http': 80,
                     'https': 443,

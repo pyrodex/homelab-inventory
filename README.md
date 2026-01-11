@@ -19,7 +19,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ### Monitoring Integration
 - **Prometheus Export**: Automatically generate Prometheus target configurations from your inventory
-- **Multiple Monitor Types**: Support for Node Exporter, SmartProm, SNMP, ICMP, HTTP/HTTPS, DNS, IPMI, NUT, and Docker monitoring
+- **Multiple Monitor Types**: Support for Node Exporter, smartctl_exporter, SNMP, ICMP, HTTP/HTTPS, DNS, IPMI, NUT, and Docker monitoring
 - **Flexible Monitoring**: Enable or disable monitoring per device, with support for multiple monitors per device
 - **Export Options**: Write Prometheus configs directly to disk or download as a ZIP archive
 - **Organized Exports**: Automatically organize Prometheus targets by monitor type and device category
