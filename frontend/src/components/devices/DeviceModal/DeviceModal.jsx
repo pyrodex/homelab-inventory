@@ -47,7 +47,7 @@ const Section = ({ title, description, isOpen, onToggle, children }) => (
   </div>
 );
 
-function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }) {
+function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, isPrefill = false }) {
   const normalizeDevice = (deviceData) => ({
     name: deviceData?.name || '', 
     device_type: deviceData?.device_type || 'linux_server_physical', 
@@ -353,8 +353,8 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false }
     setMonitors(monitors.filter((_, i) => i !== index));
   };
 
-  const modalTitle = device && device.id ? 'Edit Device' : device ? 'Clone Device' : 'Add New Device';
-  const saveButtonText = device && device.id ? 'Update Device' : device ? 'Clone Device' : 'Create Device';
+  const modalTitle = device && device.id ? 'Edit Device' : device && !isPrefill ? 'Clone Device' : 'Add New Device';
+  const saveButtonText = device && device.id ? 'Update Device' : device && !isPrefill ? 'Clone Device' : 'Create Device';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">

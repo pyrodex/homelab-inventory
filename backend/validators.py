@@ -206,3 +206,26 @@ class LocationSchema(Schema):
                 data['name'] = sanitize_string(data['name'])
         return data
 
+
+
+class SubnetSchema(Schema):
+    """Validation schema for Subnet (IPAM) creation/update"""
+    cidr = fields.Str(required=True, validate=validate.Length(min=1, max=64))
+    name = fields.Str(allow_none=True, validate=validate.Length(max=100))
+    description = fields.Str(allow_none=True, validate=validate.Length(max=2000))
+    vlan_id = fields.Int(allow_none=True, validate=validate.Range(min=1, max=4094))
+    gateway = fields.Str(allow_none=True, validate=validate.Length(max=64))
+    reserved_ranges = fields.Str(allow_none=True, validate=validate.Length(max=4000))
+    location_id = fields.Int(allow_none=True)
+
+    @pre_load
+    def sanitize_fields(self, data, **kwargs):
+        """Sanitize strings and treat empty values as None for optional fields"""
+        if isinstance(data, dict):
+            optional = ['name', 'description', 'vlan_id', 'gateway', 'reserved_ranges', 'location_id']
+            for key, value in list(data.items()):
+                if isinstance(value, str):
+                    # Keep newlines in reserved_ranges/description, strip control chars
+                    sanitized = sanitize_string(value)
+                    data[key] = None if (sanitized == '' and key in optional) else sanitized
+        return data

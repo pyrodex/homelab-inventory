@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History, Network } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -10,6 +10,7 @@ import BulkOperationsModal from './components/bulk/BulkOperationsModal/BulkOpera
 import DiscoveryModal from './components/discovery/DiscoveryModal/DiscoveryModal';
 import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 import HistoryModal from './components/history/HistoryModal.jsx';
+import IpamModal from './components/ipam/IpamModal';
 
 // Services
 import { deviceApi, statsApi, prometheusApi } from './services/api';
@@ -37,6 +38,9 @@ function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showIpamModal, setShowIpamModal] = useState(false);
+  const [ipamPrefill, setIpamPrefill] = useState(null);
+  const [ipamRefreshKey, setIpamRefreshKey] = useState(0);
   const [showOtherActions, setShowOtherActions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
@@ -233,17 +237,41 @@ function App() {
     setShowDiscoveryModal(false);
   };
 
+  const handleIpamAdd = ({ ip_address, location_id }) => {
+    setEditingDevice(null);
+    setCloningDevice(null);
+    setDiscoveryPrefill(null);
+    setIpamPrefill({ ip_address, location_id: location_id ?? '', networks: 'LAN', monitoring_enabled: true });
+    setShowAddModal(true);
+  };
+
+  const handleIpamEdit = async (deviceId) => {
+    if (!deviceId) return;
+    try {
+      const device = allDevices.find((d) => d.id === deviceId) || await deviceApi.getById(deviceId);
+      setDiscoveryPrefill(null);
+      setIpamPrefill(null);
+      setCloningDevice(null);
+      setShowAddModal(false);
+      setEditingDevice(device);
+    } catch (err) {
+      setError(err.message || 'Failed to load device');
+    }
+  };
+
   const handleModalClose = () => {
     setShowAddModal(false);
     setEditingDevice(null);
     setCloningDevice(null);
     setDiscoveryPrefill(null);
+    setIpamPrefill(null);
   };
 
   const handleModalSave = () => {
     fetchDevices();
     fetchStats();
     fetchAllDevices();
+    setIpamRefreshKey((k) => k + 1);
     handleModalClose();
   };
 
@@ -340,6 +368,13 @@ function App() {
                         <Radar size={16} className="flex-shrink-0" />
                         Discover
                       </button>
+                      <button
+                        onClick={() => { setShowIpamModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Network size={16} className="flex-shrink-0" />
+                        IPAM / Subnets
+                      </button>
                     </div>
                   )}
                 </div>
@@ -392,6 +427,12 @@ function App() {
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
                       <span className="flex items-center gap-2"><Radar size={18} /> Discover</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowIpamModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Network size={18} /> IPAM / Subnets</span>
                     </button>
                     <button
                       onClick={() => { setShowBulkModal(true); setShowActionMenu(false); }}
@@ -570,13 +611,24 @@ function App() {
       </main>
 
       {/* Modals */}
+      {showIpamModal && (
+        <IpamModal
+          onClose={() => setShowIpamModal(false)}
+          onAddDevice={handleIpamAdd}
+          onEditDevice={handleIpamEdit}
+          refreshKey={ipamRefreshKey}
+        />
+      )}
+
       {(showAddModal || editingDevice || cloningDevice) && (
         <DeviceModal 
-          device={editingDevice || cloningDevice || discoveryPrefill} 
+          key={editingDevice?.id ?? (ipamPrefill ? `ipam-${ipamPrefill.ip_address}` : 'new')}
+          device={editingDevice || cloningDevice || discoveryPrefill || ipamPrefill} 
           onClose={handleModalClose} 
           onSave={handleModalSave}
           onError={setError}
           fromDiscovery={!!discoveryPrefill}
+          isPrefill={!editingDevice && !cloningDevice && !!(discoveryPrefill || ipamPrefill)}
         />
       )}
       

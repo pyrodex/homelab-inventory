@@ -120,3 +120,17 @@ code {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* IPAM: striped fill for reserved addresses */
+.ipam-reserved {
+  background-color: #e5e7eb;
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0 4px, rgba(107, 114, 128, 0.35) 4px 6px
+  );
+}
+.dark .ipam-reserved {
+  background-color: #374151;
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0 4px, rgba(209, 213, 219, 0.25) 4px 6px
+  );
+}

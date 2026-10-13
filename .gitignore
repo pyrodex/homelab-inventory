@@ -2,3 +2,5 @@
 data/*.db
 targets/*
 docker-compose.yaml
+__pycache__/
+*.pyc
