@@ -30,6 +30,13 @@ STATUS_FREE = 'free'
 # Not in inventory, but the network says the address is in use
 STATUS_DHCP = 'dhcp'      # active DHCP lease
 STATUS_SEEN = 'seen'      # answered a ping sweep recently
+STATUS_DNS = 'dns'        # only evidence is a reverse DNS (PTR) record
+
+
+def ptr_blocks_free() -> bool:
+    """Whether a PTR-only address is kept out of free/next-free (IPAM_PTR_BLOCKS_FREE, default on)."""
+    import os
+    return os.environ.get('IPAM_PTR_BLOCKS_FREE', 'true').lower() not in ('false', '0', 'no', 'off')
 
 
 def normalize_cidr(value: str) -> str:
@@ -180,8 +187,13 @@ def _range_dict(start: int, end: int, version: int) -> dict:
 
 def build_observation_index(observations, now=None, stale_after=None) -> Dict[int, Dict[int, dict]]:
     """
-    ip version -> {ip_int: info} for addresses the network reports in use:
-    an active DHCP lease, or a ping reply within `stale_after`.
+    ip version -> {ip_int: info} from network observations.
+
+    info['status'] is what the network says beyond inventory, in priority order:
+      dhcp  - active DHCP lease
+      seen  - answered a ping within `stale_after`
+      dns   - only a reverse DNS (PTR) record
+      None  - nothing claims it (entry kept so PTR checks still show, e.g. "no PTR")
     """
     from datetime import datetime, timedelta
     now = now or datetime.utcnow()
@@ -194,14 +206,19 @@ def build_observation_index(observations, now=None, stale_after=None) -> Dict[in
             continue
         dhcp = bool(obs.dhcp_active)
         seen = bool(obs.ping_last_seen and obs.ping_last_seen >= now - stale_after)
-        if not (dhcp or seen):
+        ptr = getattr(obs, 'ptr_hostname', None)
+        ptr_checked = bool(getattr(obs, 'ptr_checked_at', None))
+        if not (dhcp or seen or ptr or ptr_checked):
             continue
+        status = STATUS_DHCP if dhcp else STATUS_SEEN if seen else STATUS_DNS if ptr else None
         index[ip.version][int(ip)] = {
-            'status': STATUS_DHCP if dhcp else STATUS_SEEN,
+            'status': status,
             'dhcp': dhcp,
             'seen': seen,
             'reachable_now': bool(obs.ping_reachable),
-            'hostname': obs.dhcp_hostname or obs.ping_hostname or obs.hostname,
+            'hostname': obs.dhcp_hostname or ptr or obs.ping_hostname or obs.hostname,
+            'ptr': ptr,
+            'ptr_checked': ptr_checked,
             'mac': obs.mac,
             'last_seen': (obs.ping_last_seen.isoformat() + 'Z') if obs.ping_last_seen else None,
             'dhcp_expires': (obs.dhcp_expires.isoformat() + 'Z') if obs.dhcp_expires else None,
@@ -244,8 +261,10 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
     }
     unknown = {
         ip: info for ip, info in observed.items()
-        if ip not in used and ip != gateway_int and first <= ip <= last
+        if info['status'] and ip not in used and ip != gateway_int and first <= ip <= last
     }
+    block_dns = ptr_blocks_free()
+    blocking = {ip for ip, info in unknown.items() if info['status'] != STATUS_DNS or block_dns}
 
     def is_reserved(ip_int: int) -> bool:
         return any(lo <= ip_int <= hi for lo, hi in reserved_ranges)
@@ -255,7 +274,7 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
     # Blocked intervals (inclusive) inside the usable range: used addresses,
     # the gateway, and reserved ranges. Interval math keeps this cheap even
     # for very large (IPv6) reservations.
-    point_blocks = set(ip for ip in used if first <= ip <= last) | set(unknown)
+    point_blocks = set(ip for ip in used if first <= ip <= last) | blocking
     if gateway_int is not None and first <= gateway_int <= last:
         point_blocks.add(gateway_int)
     intervals = [(ip, ip) for ip in point_blocks]
@@ -284,7 +303,7 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
 
     used_in_usable = len([ip for ip in used if first <= ip <= last])
     # Everything blocked that isn't an inventoried device: gateway + reservations
-    reserved_total = (usable_total - free_total) - used_in_usable - len(unknown)
+    reserved_total = (usable_total - free_total) - used_in_usable - len(blocking)
 
     monitored_count = sum(1 for refs in used.values() if any(r['monitored'] for r in refs))
     unmonitored_count = len(used) - monitored_count
@@ -310,6 +329,8 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
             'devices': refs,
             'notes': notes,
             'observed': observed.get(ip_int),
+            'ptr': (observed.get(ip_int) or {}).get('ptr'),
+            'ptr_checked': bool((observed.get(ip_int) or {}).get('ptr_checked')),
         })
 
     unknown_list = [
@@ -332,9 +353,12 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
             'monitored': monitored_count,
             'unmonitored': unmonitored_count,
             'reserved': reserved_total,
-            'unknown_active': len(unknown),
+            'unknown_active': sum(1 for i in unknown.values() if i['status'] in (STATUS_DHCP, STATUS_SEEN)),
             'dhcp': sum(1 for i in unknown.values() if i['status'] == STATUS_DHCP),
             'seen': sum(1 for i in unknown.values() if i['status'] == STATUS_SEEN),
+            'dns_only': sum(1 for i in unknown.values() if i['status'] == STATUS_DNS),
+            'with_ptr': sum(1 for i in observed.values() if i.get('ptr')),
+            'ptr_blocks_free': block_dns,
             'free': free_total,
             'utilization_percent': round(100.0 * (usable_total - free_total) / usable_total, 1) if usable_total else 0.0,
         },
@@ -369,6 +393,9 @@ def analyze_subnet(subnet, address_index, observation_index=None) -> dict:
                 entry['status'] = STATUS_RESERVED
             else:
                 entry['status'] = STATUS_FREE
+            ptr = (observed.get(ip_int) or {}).get('ptr')
+            if ptr:
+                entry['ptr'] = ptr
             addresses.append(entry)
         result['addresses'] = addresses
 

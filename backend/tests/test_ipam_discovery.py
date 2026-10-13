@@ -55,6 +55,13 @@ def subnet(app):
         return s.id
 
 
+def fake_ptr(records):
+    """reverse_lookup stand-in: {ip: name} found, everything else a definite 'no record'."""
+    def _lookup(ip):
+        return (records[ip], 'found') if ip in records else (None, 'none')
+    return _lookup
+
+
 def fake_ping(alive):
     def _ping(target, timeout=1.0):
         return (True, 0.4, None) if target in alive else (False, None, 'No response')
@@ -74,9 +81,10 @@ def test_ping_command_units_per_platform():
 def test_sweep_concurrent_and_resolves_only_alive(monkeypatch):
     monkeypatch.setattr(netprobe, 'ping', fake_ping({'10.0.0.2'}))
     looked_up = []
-    monkeypatch.setattr(netprobe, 'reverse_dns', lambda ip: looked_up.append(ip) or 'host.lan')
+    monkeypatch.setattr(netprobe, 'reverse_lookup', lambda ip: (looked_up.append(ip) or 'host.lan', 'found'))
     res = netprobe.sweep(['10.0.0.1', '10.0.0.2', '10.0.0.3'])
-    assert res['10.0.0.2'] == {'reachable': True, 'rtt_ms': 0.4, 'hostname': 'host.lan', 'error': None}
+    assert res['10.0.0.2'] == {'reachable': True, 'rtt_ms': 0.4, 'hostname': 'host.lan',
+                               'ptr_status': 'found', 'error': None}
     assert res['10.0.0.1']['reachable'] is False
     assert looked_up == ['10.0.0.2']
 
@@ -187,7 +195,7 @@ def test_scan_eligibility(monkeypatch):
 
 def test_scan_subnet_records_observations(app, subnet, monkeypatch):
     monkeypatch.setattr(netprobe, 'ping', fake_ping({'10.0.0.1', '10.0.0.10', '10.0.0.33'}))
-    monkeypatch.setattr(netprobe, 'reverse_dns', lambda ip: 'mystery.lan' if ip == '10.0.0.33' else None)
+    monkeypatch.setattr(netprobe, 'reverse_lookup', fake_ptr({'10.0.0.33': 'mystery.lan'}))
     with app.app_context():
         result = ipam_scan.scan_subnet(subnet)
         assert result['status'] == 'ok' and result['scanned'] == 62 and result['alive'] == 3
@@ -232,6 +240,7 @@ def test_due_subnets(app, subnet):
 def test_observations_block_free_addresses(client, app, subnet, monkeypatch):
     monkeypatch.setattr(netprobe, 'ping', fake_ping({'10.0.0.1', '10.0.0.2', '10.0.0.10'}))
     monkeypatch.setattr(netprobe, 'reverse_dns', lambda ip: None)
+    monkeypatch.setattr(netprobe, 'reverse_lookup', fake_ptr({}))
     with app.app_context():
         ipam_scan.scan_subnet(subnet)
     client.post('/api/ipam/dhcp/leases', data=f"{NOW + 3600} aa:bb:cc:dd:ee:09 10.0.0.3 phone *\n")
@@ -264,6 +273,7 @@ def test_stale_observations_free_up(client, app, subnet, monkeypatch):
 def test_scan_api_and_settings(client, app, subnet, monkeypatch):
     monkeypatch.setattr(netprobe, 'ping', fake_ping({'10.0.0.5'}))
     monkeypatch.setattr(netprobe, 'reverse_dns', lambda ip: None)
+    monkeypatch.setattr(netprobe, 'reverse_lookup', fake_ptr({}))
     resp = client.put(f'/api/subnets/{subnet}', json={'scan_enabled': True, 'scan_interval_minutes': 15})
     assert resp.status_code == 200 and resp.get_json()['scan_interval_minutes'] == 15
     assert client.put(f'/api/subnets/{subnet}', json={'scan_interval_minutes': 1}).status_code == 400

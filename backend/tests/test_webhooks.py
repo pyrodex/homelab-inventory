@@ -223,6 +223,7 @@ def test_ipam_address_discovered(client, app, receiver, monkeypatch):
         sid = s.id
     monkeypatch.setattr(netprobe, 'ping', lambda t, timeout=1.0: (t in ('10.0.0.10', '10.0.0.5'), 0.2, None))
     monkeypatch.setattr(netprobe, 'reverse_dns', lambda ip: None)
+    monkeypatch.setattr(netprobe, 'reverse_lookup', lambda ip: (None, 'none'))
     with app.app_context():
         ipam_scan.scan_subnet(sid)
         ipam_scan.scan_subnet(sid)  # second sweep: nothing new

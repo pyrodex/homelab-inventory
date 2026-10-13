@@ -315,6 +315,9 @@ class IpObservation(db.Model):
     ping_reachable = db.Column(db.Boolean)
     ping_rtt_ms = db.Column(db.Float)
     ping_hostname = db.Column(db.String(255))
+    # reverse DNS, refreshed by sweeps for every address (not just live ones)
+    ptr_hostname = db.Column(db.String(255))
+    ptr_checked_at = db.Column(db.DateTime)
     # DHCP lease (dnsmasq)
     dhcp_source = db.Column(db.String(255), index=True)
     dhcp_hostname = db.Column(db.String(255))
@@ -327,7 +330,7 @@ class IpObservation(db.Model):
     def to_dict(self):
         return {
             'ip': self.ip,
-            'hostname': self.dhcp_hostname or self.ping_hostname or self.hostname,
+            'hostname': self.dhcp_hostname or self.ptr_hostname or self.ping_hostname or self.hostname,
             'mac': self.mac,
             'ping_reachable': self.ping_reachable,
             'ping_last_seen': _iso_utc(self.ping_last_seen),
@@ -336,6 +339,8 @@ class IpObservation(db.Model):
             'dhcp_active': bool(self.dhcp_active),
             'dhcp_expires': _iso_utc(self.dhcp_expires),
             'dhcp_source': self.dhcp_source,
+            'ptr_hostname': self.ptr_hostname,
+            'ptr_checked_at': _iso_utc(self.ptr_checked_at),
         }
 
 

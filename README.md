@@ -57,6 +57,7 @@ A modern, web-based inventory for homelab infrastructure: track devices and how 
 - **Monitor-aware**: IPs referenced by monitor endpoints (e.g. `http://10.0.0.5/admin`) count as in use
 - **Hygiene Checks**: Flags duplicate IP assignments and devices whose IP isn't inside any defined subnet
 - **Ping Sweeps**: Scheduled per-subnet sweeps (IPv4) find addresses that answer but aren't in inventory
+- **Reverse DNS**: Sweeps check PTR records for every address; DNS-only addresses get their own color and every PTR holder a marker, so stale DNS and devices missing records stand out
 - **DHCP Leases**: Import dnsmasq leases (watched file, `curl` push, or upload) so active leases aren't handed out twice
 
 ### User Interface
@@ -291,6 +292,8 @@ The repo ships with a ready-to-run Compose file that pulls the pre-built images 
 | `IPAM_BACKGROUND_WORKERS` | Run the ping-sweep scheduler and lease-file watcher | `true` |
 | `IPAM_SCAN_MAX_HOSTS` | Largest subnet (usable hosts) that may be swept | `1024` |
 | `IPAM_STALE_AFTER_HOURS` | How long a ping-seen address counts as in use | `72` |
+| `IPAM_SWEEP_PTR` | Look up reverse DNS (PTR) for every swept address, not just ones that answer | `true` |
+| `IPAM_PTR_BLOCKS_FREE` | Keep addresses whose only evidence is a PTR record out of free / next-free | `true` |
 | `DNSMASQ_LEASES_PATH` | Comma-separated dnsmasq lease files to watch (mount them into the container) | — |
 | `DNSMASQ_LEASES_POLL_SECONDS` | How often watched lease files are checked for changes | `60` |
 | `IPAM_LEASES_TOKEN` | If set, lease uploads require `Authorization: Bearer <token>` | — |
@@ -467,6 +470,10 @@ Subnets larger than 4,096 addresses skip the grid and show compressed free range
 **What's really on the network.** Inventory isn't the only thing using addresses, so IPAM can also look at the network:
 
 - **Ping sweeps**: in a subnet, tick **Ping sweep** and pick an interval, or click **Scan now**. Addresses that answered within `IPAM_STALE_AFTER_HOURS` show in violet and stop counting as free. Sweeps are IPv4-only and limited to `IPAM_SCAN_MAX_HOSTS`. A /24 takes about a second, since pings run in parallel.
+- **Reverse DNS**: every sweep also looks up the PTR record for each address, using the backend's resolver.
+  - **Rose cells** have a PTR record but nothing else claims them: no device, no ping reply, no lease. That's usually stale DNS or a host that's off. They aren't offered as free unless `IPAM_PTR_BLOCKS_FREE=false`.
+  - **A small rose dot** marks any address with a PTR record, whatever its other status. The **In use** list shows each device's PTR name, or **no PTR** when the sweep found none.
+  - A resolver failure never erases a known name; only a definite "no record" clears it.
 - **DHCP leases (dnsmasq)**: active leases show in cyan with hostname and MAC. Feed them in any of three ways:
   - Mount the lease file and set `DNSMASQ_LEASES_PATH=/leases/dnsmasq.leases`; it's re-read when it changes.
   - Push it from the dnsmasq host with cron: `curl -fsS --data-binary @/var/lib/misc/dnsmasq.leases "http://homelab-inventory:5000/api/ipam/dhcp/leases?source=pihole"`
@@ -820,6 +827,7 @@ pytest
 - `tests/test_api.py` - Integration tests for core API endpoints
 - `tests/test_subnets.py` - IPAM subnets, utilization, free ranges
 - `tests/test_ipam_discovery.py` - Ping sweeps, dnsmasq lease import, observation-aware IPAM
+- `tests/test_ipam_reverse_dns.py` - PTR lookups in sweeps, DNS-only status, PTR markers
 - `tests/test_prometheus.py` - HTTP service discovery, scrape-config generation, live status
 - `tests/test_tags_links.py` - Tags, relationships, impact analysis
 - `tests/test_exports.py` - Ansible inventory and NetBox CSV

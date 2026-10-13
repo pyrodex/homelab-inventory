@@ -124,8 +124,8 @@ function ScanPanel({ subnet, scan, onChanged, onScanned }) {
         </button>
       </div>
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        {last}. Addresses that answered within the last {Math.round(scan?.stale_after_hours ?? 72)} h, or hold an active
-        DHCP lease, aren&apos;t counted as free.
+        {last}. Each sweep also checks reverse DNS for every address. Addresses that answered within the last{' '}
+        {Math.round(scan?.stale_after_hours ?? 72)} h, hold an active DHCP lease, or have a PTR record aren&apos;t counted as free.
       </p>
       {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>

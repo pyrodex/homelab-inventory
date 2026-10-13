@@ -14,6 +14,11 @@ const STATUS_STYLES = {
     cell: 'bg-cyan-500 dark:bg-cyan-600 border-cyan-600 text-white',
     swatch: 'bg-cyan-500',
   },
+  dns: {
+    label: 'Reverse DNS only, not in inventory',
+    cell: 'bg-rose-400 dark:bg-rose-600 border-rose-500 text-white',
+    swatch: 'bg-rose-400',
+  },
   seen: {
     label: 'Answers ping, not in inventory',
     cell: 'bg-violet-500 dark:bg-violet-600 border-violet-600 text-white',
@@ -56,7 +61,12 @@ const STATUS_STYLES = {
   },
 };
 
-const LEGEND_ORDER = ['free', 'monitored', 'unmonitored', 'seen', 'dhcp', 'gateway', 'reserved', 'network'];
+const LEGEND_ORDER = ['free', 'monitored', 'unmonitored', 'seen', 'dhcp', 'dns', 'gateway', 'reserved', 'network'];
+
+// Corner marker shown on any address with a reverse DNS (PTR) record
+const PtrDot = ({ className = '' }) => (
+  <span className={`w-1.5 h-1.5 rounded-full bg-rose-500 ring-1 ring-white dark:ring-gray-900 ${className}`} aria-hidden="true" />
+);
 
 const EMPTY_FORM = {
   cidr: '', name: '', vlan_id: '', gateway: '', location_id: '', reserved_ranges: '', description: '',
@@ -84,6 +94,7 @@ function UtilizationBar({ summary, className = '' }) {
       <div className="bg-green-500" style={{ width: pct(summary.monitored) }} />
       <div className="bg-amber-400" style={{ width: pct(summary.unmonitored) }} />
       <div className="bg-violet-500" style={{ width: pct(summary.unknown_active || 0) }} />
+      {summary.ptr_blocks_free !== false && <div className="bg-rose-400" style={{ width: pct(summary.dns_only || 0) }} />}
       <div className="ipam-reserved" style={{ width: pct(summary.reserved) }} />
     </div>
   );
@@ -385,6 +396,11 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                           · {s.summary.unknown_active} unknown
                         </span>
                       )}
+                      {s.summary?.dns_only > 0 && (
+                        <span className="ml-1 text-rose-600 dark:text-rose-300" title="Reverse DNS record but nothing else claims the address">
+                          · {s.summary.dns_only} DNS
+                        </span>
+                      )}
                     </span>
                     <span className="flex items-center gap-1">
                       {(s.conflict_count > 0 || s.reserved_error) && <AlertTriangle size={12} className="text-amber-500" />}
@@ -460,6 +476,9 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
           <span className={`w-4 h-4 rounded flex-shrink-0 ${style.swatch}`} />
           <span className="font-mono font-semibold text-gray-900 dark:text-white">{selectedEntry.ip}</span>
           <span className="text-sm text-gray-600 dark:text-gray-300">{style.label}</span>
+          {selectedEntry.ptr && selectedEntry.status !== 'dns' && (
+            <span className="inline-flex items-center gap-1 text-xs text-rose-700 dark:text-rose-300"><PtrDot /> PTR {selectedEntry.ptr}</span>
+          )}
           {selectedEntry.observed && (
             <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
               {[selectedEntry.observed.hostname, selectedEntry.observed.mac,
@@ -534,12 +553,13 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
           {[
             ['Free', summary.free, 'text-gray-900 dark:text-white'],
             ['Monitored', summary.monitored, 'text-green-600 dark:text-green-400'],
             ['Monitoring off', summary.unmonitored, 'text-amber-600 dark:text-amber-400'],
             ['Not in inventory', summary.unknown_active || 0, summary.unknown_active ? 'text-violet-600 dark:text-violet-300' : 'text-gray-600 dark:text-gray-300'],
+            ['DNS only', summary.dns_only || 0, summary.dns_only ? 'text-rose-600 dark:text-rose-300' : 'text-gray-600 dark:text-gray-300'],
             ['Reserved', summary.reserved, 'text-gray-600 dark:text-gray-300'],
             ['Usable', summary.usable, 'text-gray-600 dark:text-gray-300'],
           ].map(([label, value, color]) => (
@@ -611,6 +631,10 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                     <span className={`w-3 h-3 rounded-sm ${STATUS_STYLES[key].swatch}`} /> {STATUS_STYLES[key].label}
                   </span>
                 ))}
+                <span className="flex items-center gap-1">
+                  <span className="relative w-3 h-3 rounded-sm border border-gray-300 dark:border-gray-600"><PtrDot className="absolute -top-0.5 -right-0.5" /></span>
+                  Has reverse DNS (PTR)
+                </span>
               </div>
             </div>
             <div className="grid grid-cols-8 sm:grid-cols-16 gap-1">
@@ -621,12 +645,13 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                   <button
                     key={a.ip}
                     onClick={() => setSelectedIp(a.ip)}
-                    title={`${a.ip} — ${style.label}${names ? `: ${names}` : ''}`}
-                    className={`h-8 rounded border text-[11px] font-mono tabular-nums transition-colors ${style.cell} ${
+                    title={`${a.ip} — ${style.label}${names ? `: ${names}` : ''}${a.ptr ? `\nPTR: ${a.ptr}` : ''}`}
+                    className={`relative h-8 rounded border text-[11px] font-mono tabular-nums transition-colors ${style.cell} ${
                       selectedIp === a.ip ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-offset-gray-900' : ''
                     }`}
                   >
                     {cellLabel(a.ip, version)}
+                    {a.ptr && a.status !== 'dns' && <PtrDot className="absolute top-0.5 right-0.5" />}
                   </button>
                 );
               })}
@@ -678,6 +703,8 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                   <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_STYLES[u.status].swatch}`} />
                   <span className="font-mono w-36 flex-shrink-0 truncate">{u.ip}</span>
                   <span className="truncate text-gray-700 dark:text-gray-200">{u.devices.map((d) => d.name).join(', ')}</span>
+                  {u.ptr && <span className="truncate text-xs text-rose-700 dark:text-rose-300 font-mono" title="Reverse DNS (PTR)">{u.ptr}</span>}
+                  {!u.ptr && u.ptr_checked && <span className="text-xs text-gray-400 flex-shrink-0" title="Swept, but no PTR record">no PTR</span>}
                   {u.notes.length > 0 && <span className="ml-auto text-xs text-amber-600 flex-shrink-0">{u.notes.join(', ')}</span>}
                 </button>
               ))}
