@@ -36,71 +36,102 @@ def get_monitor_directory_name(monitor_type, device_type):
     return monitor_type
 
 
-def build_prometheus_targets(devices):
-    """Build Prometheus target configuration from devices"""
-    monitors_by_type = {}
-    
+DEFAULT_PORTS = {
+    'node_exporter': 9100,
+    'smartctl_exporter': 9633,
+    'snmp': 161,
+    'http': 80,
+    'https': 443,
+    'dns': 53,
+    'ipmi': 623,
+    'nut': 3493,
+    'docker': 8090
+}
+
+
+def build_monitor_target(device, monitor):
+    """
+    Compute the Prometheus target string for one monitor on a device.
+    Shared by file export, HTTP service discovery, and status matching so
+    all three always agree on what a target looks like.
+    """
+    monitor_type = monitor.monitor_type
+    target = device.ip_address or ''
+    if monitor.port:
+        if ':' in target:
+            target = target.split(':')[0] + f':{monitor.port}'
+        else:
+            target = f'{target}:{monitor.port}'
+    elif ':' not in target and monitor_type in DEFAULT_PORTS:
+        target = f'{target}:{DEFAULT_PORTS[monitor_type]}'
+
+    if monitor_type == 'http' and not target.startswith('http://'):
+        target = f'http://{target}'
+    elif monitor_type == 'https' and not target.startswith('https://'):
+        target = f'https://{target}'
+    return target
+
+
+def build_target_labels(device, monitor):
+    """Labels attached to every exported target."""
+    return {
+        'inventory_device_id': str(device.id),
+        'device_name': device.name,
+        'device_type': device.device_type,
+        'ip_address': device.ip_address or '',
+        'deviceFunction': device.device_function or '',
+        'networks': device.networks or '',
+        'vendor': device.vendor_obj.name if device.vendor_obj else '',
+        'model': device.model_obj.name if device.model_obj else '',
+        'location': device.location_obj.name if device.location_obj else '',
+        'serial_number': device.serial_number or '',
+        'interface_type': device.interface_type or '',
+        'poe_powered': 'true' if device.poe_powered else 'false',
+        'poe_standards': device.poe_standards or '',
+        'monitor_type': monitor.monitor_type,
+        'monitor_endpoint': monitor.endpoint or ''
+    }
+
+
+def iter_enabled_targets(devices):
+    """Yield (device, monitor, group_name, target) for every enabled monitor."""
     for device in devices:
+        if not device.ip_address:
+            continue
         for monitor in device.monitors:
             if not monitor.enabled:
                 continue
-            
-            monitor_type = monitor.monitor_type
-            directory_name = get_monitor_directory_name(monitor_type, device.device_type)
-            
-            if directory_name not in monitors_by_type:
-                monitors_by_type[directory_name] = []
-            
-            target = device.ip_address
-            if monitor.port:
-                if ':' in target:
-                    target = target.split(':')[0] + f':{monitor.port}'
-                else:
-                    target = f'{target}:{monitor.port}'
-            elif ':' not in target:
-                default_ports = {
-                    'node_exporter': 9100,
-                    'smartctl_exporter': 9633,
-                    'snmp': 161,
-                    'http': 80,
-                    'https': 443,
-                    'dns': 53,
-                    'ipmi': 623,
-                    'nut': 3493,
-                    'docker': 8090
-                }
-                if monitor_type in default_ports:
-                    target = f'{target}:{default_ports[monitor_type]}'
-            
-            if monitor_type == 'http' and not target.startswith('http://'):
-                target = f'http://{target}'
-            elif monitor_type == 'https' and not target.startswith('https://'):
-                target = f'https://{target}'
-            
-            labels = {
-                'device_name': device.name,
-                'device_type': device.device_type,
-                'ip_address': device.ip_address or '',
-                'deviceFunction': device.device_function or '',
-                'networks': device.networks or '',
-                'vendor': device.vendor_obj.name if device.vendor_obj else '',
-                'model': device.model_obj.name if device.model_obj else '',
-                'location': device.location_obj.name if device.location_obj else '',
-                'serial_number': device.serial_number or '',
-                'interface_type': device.interface_type or '',
-                'poe_powered': 'true' if device.poe_powered else 'false',
-                'poe_standards': device.poe_standards or '',
-                'monitor_type': monitor_type,
-                'monitor_endpoint': monitor.endpoint or ''
-            }
-            
-            monitors_by_type[directory_name].append({
-                'device_name': device.name,
-                'target': target,
-                'labels': labels
-            })
-    
+            group = get_monitor_directory_name(monitor.monitor_type, device.device_type)
+            yield device, monitor, group, build_monitor_target(device, monitor)
+
+
+def build_prometheus_targets(devices):
+    """Build Prometheus target configuration from devices"""
+    monitors_by_type = {}
+    for device, monitor, group, target in iter_enabled_targets(devices):
+        monitors_by_type.setdefault(group, []).append({
+            'device_name': device.name,
+            'target': target,
+            'labels': build_target_labels(device, monitor)
+        })
     return monitors_by_type
+
+
+def build_http_sd(devices, group=None):
+    """
+    Build a Prometheus HTTP service discovery payload:
+    [{"targets": [...], "labels": {...}}, ...]
+    Optionally limited to a single group (same names as the export folders,
+    e.g. linux_node_exporter, snmp, icmp).
+    """
+    payload = []
+    for device, monitor, group_name, target in iter_enabled_targets(devices):
+        if group and group_name != group:
+            continue
+        labels = build_target_labels(device, monitor)
+        labels['inventory_group'] = group_name
+        payload.append({'targets': [target], 'labels': labels})
+    return payload
 
 
 def export_to_disk(export_path, devices):

@@ -255,6 +255,13 @@ The repo ships with a ready-to-run Compose file that pulls the pre-built images 
 | `BACKUP_SCHEDULE` | Cron schedule for automatic backups | `0 2 * * *` |
 | `SECRET_KEY` | Flask secret key (change in production!) | `dev-secret-key-change-in-production` |
 | `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
+| `PROMETHEUS_URL` | Prometheus server for live device status (e.g. `http://prometheus:9090`); unset disables status | — |
+| `PROMETHEUS_BEARER_TOKEN` | Bearer token sent to `PROMETHEUS_URL` | — |
+| `PROMETHEUS_USERNAME` / `PROMETHEUS_PASSWORD` | Basic auth for `PROMETHEUS_URL` (used if no bearer token) | — |
+| `PROMETHEUS_VERIFY_TLS` | Verify TLS certificates for an `https://` Prometheus | `true` |
+| `PROMETHEUS_STATUS_CACHE_SECONDS` | How long to cache status queries | `15` |
+| `PROMETHEUS_TIMEOUT_SECONDS` | Timeout for each status query | `5` |
+| `PROMETHEUS_SD_TOKEN` | If set, `/api/prometheus/sd` requires `Authorization: Bearer <token>` | — |
 
 #### Docker Compose
 
@@ -305,7 +312,29 @@ On a brand-new database, core tables are bootstrapped automatically (after migra
 
 ### Prometheus Integration
 
-The application exports Prometheus target configurations in YAML format. Configure your Prometheus instance to scrape from the export directory:
+#### HTTP service discovery (recommended)
+
+Prometheus can pull targets straight from the app with `http_sd_configs`, so edits take effect on the next refresh with no file export or reload. Open **Other Actions → Prometheus SD & Status** to generate a ready-to-paste `scrape_configs` block (it includes blackbox/SNMP relabeling for probe-style groups), or write one by hand:
+
+```yaml
+scrape_configs:
+  - job_name: inventory_linux_node_exporter
+    http_sd_configs:
+      - url: http://homelab-inventory:5000/api/prometheus/sd?group=linux_node_exporter
+        refresh_interval: 60s
+        # authorization:
+        #   credentials: <PROMETHEUS_SD_TOKEN>
+```
+
+Groups match the export folder names (`linux_node_exporter`, `snmp`, `icmp`, …). Targets carry the same labels as the file export plus `inventory_device_id` and `inventory_group`.
+
+#### Live device status
+
+Set `PROMETHEUS_URL` and each device shows **Up / Down / Degraded / Not scraped**, and a Prometheus card appears in the stats row. The app reads `probe_success` (blackbox probes) and `up` (exporters), matching series by `inventory_device_id` + `monitor_type`, then `device_name` + `monitor_type`, then `instance` — so jobs you wrote by hand still match by address. Status polls every 60 seconds; if Prometheus is unreachable the badges hide rather than show stale state.
+
+#### File-based discovery
+
+The application can also export Prometheus target configurations in YAML format. Configure your Prometheus instance to scrape from the export directory:
 
 ```yaml
 # prometheus.yml
@@ -479,6 +508,10 @@ All API endpoints are prefixed with `/api`
 
 - `GET /api/prometheus/export?mode=write` - Write Prometheus configs to disk
 - `GET /api/prometheus/export?mode=download` - Download Prometheus configs as ZIP
+- `GET /api/prometheus/sd[?group=name]` - Prometheus HTTP service discovery payload (bearer token if `PROMETHEUS_SD_TOKEN` is set)
+- `GET /api/prometheus/sd/groups` - Groups that currently have targets, with counts
+- `GET /api/prometheus/sd/scrape-config` - Generated `scrape_configs` YAML (`base_url`, `blackbox`, `snmp_exporter`, `all=true`)
+- `GET /api/prometheus/status[?refresh=true]` - Live per-device status from `PROMETHEUS_URL`
 
 #### Bulk Operations
 

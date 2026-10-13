@@ -168,6 +168,21 @@ export const prometheusApi = {
     const blob = await response.blob();
     return blob;
   },
+
+  status: (refresh = false) => apiRequest(`/prometheus/status${refresh ? '?refresh=true' : ''}`),
+
+  sdGroups: () => apiRequest('/prometheus/sd/groups'),
+
+  scrapeConfig: async ({ baseUrl, blackbox, snmpExporter, all = false } = {}) => {
+    const params = new URLSearchParams();
+    if (baseUrl) params.append('base_url', baseUrl);
+    if (blackbox) params.append('blackbox', blackbox);
+    if (snmpExporter) params.append('snmp_exporter', snmpExporter);
+    if (all) params.append('all', 'true');
+    const response = await fetch(`${API_URL}/prometheus/sd/scrape-config?${params.toString()}`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response.text();
+  },
 };
 
 // Bulk operations API calls

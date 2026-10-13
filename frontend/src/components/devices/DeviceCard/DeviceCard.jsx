@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { X, Check, Copy, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { DEVICE_TYPES } from '../../../constants/deviceTypes';
+import StatusBadge from '../StatusBadge/StatusBadge';
 
-function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onDelete }) {
+function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onClone, onDelete }) {
   const deviceTypeLabel = DEVICE_TYPES.find(t => t.value === device.device_type)?.label || device.device_type;
   const deviceFunction = device.deviceFunction || '';
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -29,6 +30,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
                 >
                   {device.monitoring_enabled ? 'Active' : 'Disabled'}
                 </span>
+                <StatusBadge status={status} compact />
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-600 dark:text-gray-300">
                 <span>{deviceTypeLabel}</span>
@@ -144,6 +146,7 @@ function DeviceCard({ device, viewMode, onToggleMonitoring, onEdit, onClone, onD
             >
               {device.monitoring_enabled ? 'Monitoring Active' : 'Monitoring Disabled'}
             </span>
+            <StatusBadge status={status} />
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
