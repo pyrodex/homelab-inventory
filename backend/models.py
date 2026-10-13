@@ -7,6 +7,11 @@ from datetime import datetime
 db = SQLAlchemy()
 
 
+def _iso_utc(value):
+    """ISO-8601 with an explicit UTC offset (naive datetimes here are UTC)."""
+    return value.isoformat() + 'Z' if value else None
+
+
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, unique=True)
@@ -224,6 +229,13 @@ class Subnet(db.Model):
     # (e.g. DHCP pools, VIPs, future use)
     reserved_ranges = db.Column(db.Text)
     location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True, index=True)
+    # Scheduled ping sweep (IPv4, bounded size) to find live addresses not in inventory
+    scan_enabled = db.Column(db.Boolean, nullable=False, default=False)
+    scan_interval_minutes = db.Column(db.Integer, nullable=False, default=60)
+    last_scan_at = db.Column(db.DateTime)
+    last_scan_duration_ms = db.Column(db.Integer)
+    last_scan_alive = db.Column(db.Integer)
+    last_scan_error = db.Column(db.String(255))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -240,6 +252,12 @@ class Subnet(db.Model):
             'reserved_ranges': self.reserved_ranges,
             'location_id': self.location_id,
             'location_name': self.location.name if self.location else None,
+            'scan_enabled': bool(self.scan_enabled),
+            'scan_interval_minutes': self.scan_interval_minutes,
+            'last_scan_at': _iso_utc(self.last_scan_at),
+            'last_scan_duration_ms': self.last_scan_duration_ms,
+            'last_scan_alive': self.last_scan_alive,
+            'last_scan_error': self.last_scan_error,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -278,4 +296,44 @@ class DeviceLink(db.Model):
             'link_type': self.link_type,
             'port': self.port,
             'notes': self.notes,
+        }
+
+
+class IpObservation(db.Model):
+    """
+    What the network says about an address, independent of inventory:
+    the latest ping-sweep result and/or DHCP lease. One row per IP.
+    """
+    __tablename__ = 'ip_observation'
+    id = db.Column(db.Integer, primary_key=True)
+    ip = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    hostname = db.Column(db.String(255))
+    mac = db.Column(db.String(64))
+    # ping sweep
+    ping_last_checked = db.Column(db.DateTime)
+    ping_last_seen = db.Column(db.DateTime, index=True)
+    ping_reachable = db.Column(db.Boolean)
+    ping_rtt_ms = db.Column(db.Float)
+    ping_hostname = db.Column(db.String(255))
+    # DHCP lease (dnsmasq)
+    dhcp_source = db.Column(db.String(255), index=True)
+    dhcp_hostname = db.Column(db.String(255))
+    dhcp_client_id = db.Column(db.String(255))
+    dhcp_expires = db.Column(db.DateTime)   # NULL with dhcp_active = infinite lease
+    dhcp_active = db.Column(db.Boolean, nullable=False, default=False, index=True)
+    dhcp_last_seen = db.Column(db.DateTime)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'ip': self.ip,
+            'hostname': self.dhcp_hostname or self.ping_hostname or self.hostname,
+            'mac': self.mac,
+            'ping_reachable': self.ping_reachable,
+            'ping_last_seen': _iso_utc(self.ping_last_seen),
+            'ping_last_checked': _iso_utc(self.ping_last_checked),
+            'ping_rtt_ms': self.ping_rtt_ms,
+            'dhcp_active': bool(self.dhcp_active),
+            'dhcp_expires': _iso_utc(self.dhcp_expires),
+            'dhcp_source': self.dhcp_source,
         }

@@ -295,6 +295,30 @@ export const subnetApi = {
   delete: (id) => apiRequest(`/subnets/${id}`, {
     method: 'DELETE',
   }),
+
+  scan: (id) => apiRequest(`/subnets/${id}/scan`, { method: 'POST' }),
+  scanStatus: (id) => apiRequest(`/subnets/${id}/scan`),
+};
+
+// DHCP lease import (dnsmasq)
+export const dhcpApi = {
+  status: () => apiRequest('/ipam/dhcp/status'),
+  upload: async ({ file = null, text = '', source = '' } = {}) => {
+    const qs = source ? `?source=${encodeURIComponent(source)}` : '';
+    let response;
+    if (file) {
+      const form = new FormData();
+      form.append('file', file);
+      response = await fetch(`${API_URL}/ipam/dhcp/leases${qs}`, { method: 'POST', body: form });
+    } else {
+      response = await fetch(`${API_URL}/ipam/dhcp/leases${qs}`, {
+        method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: text,
+      });
+    }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    return data;
+  },
 };
 
 // Tag API calls

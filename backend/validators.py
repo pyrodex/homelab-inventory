@@ -217,6 +217,8 @@ class SubnetSchema(Schema):
     gateway = fields.Str(allow_none=True, validate=validate.Length(max=64))
     reserved_ranges = fields.Str(allow_none=True, validate=validate.Length(max=4000))
     location_id = fields.Int(allow_none=True)
+    scan_enabled = fields.Bool()
+    scan_interval_minutes = fields.Int(validate=validate.Range(min=5, max=7 * 24 * 60))
 
     @pre_load
     def sanitize_fields(self, data, **kwargs):

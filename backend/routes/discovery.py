@@ -3,31 +3,22 @@ Discovery routes for probing hosts via ICMP and reverse DNS lookups.
 """
 import ipaddress
 import logging
-import platform
 import re
 import socket
-import subprocess
 from typing import List, Tuple
 
 from flask import Blueprint, request
 
 from utils.response import success_response, validation_error_response
+from services import netprobe
+from concurrent.futures import ThreadPoolExecutor
 
 discovery_bp = Blueprint('discovery', __name__)
 
-# Optional pure-Python ping fallback (no system binary)
-try:
-    import ping3  # type: ignore
-
-    ping3.verbosity(0)
-    PING3_AVAILABLE = True
-except Exception:
-    ping3 = None
-    PING3_AVAILABLE = False
-
 # Guardrails to avoid runaway scans
 MAX_TARGETS = 256
-DEFAULT_TIMEOUT = 1.5  # seconds
+DEFAULT_TIMEOUT = 1.0  # seconds per probe
+DISCOVERY_WORKERS = 32
 
 
 def register_discovery_routes(app, limiter):
@@ -89,72 +80,9 @@ def _expand_range(range_value: str) -> List[str]:
     return [str(ipaddress.ip_address(int(start_ip) + offset)) for offset in range(count)]
 
 
-def _build_ping_command(target: str, timeout: float) -> List[str]:
-    """Build a platform-aware ping command."""
-    system = platform.system().lower()
-    count_flag = "-c" if system != "windows" else "-n"
-    # Use milliseconds everywhere for consistency; Linux -W also accepts ms.
-    timeout_flag = "-W" if system != "windows" else "-w"
-    timeout_ms = max(1, int(timeout * 1000))
-
-    return ["ping", count_flag, "1", timeout_flag, str(timeout_ms), target]
-
-
-def _ping_target(target: str) -> Tuple[bool, float, str]:
-    """
-    Run an ICMP ping to the target.
-    Returns: (reachable, rtt_ms, error_message)
-    """
-    cmd = _build_ping_command(target, DEFAULT_TIMEOUT)
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=DEFAULT_TIMEOUT + 1,
-            check=False
-        )
-        output = (result.stdout or "") + (result.stderr or "")
-        reachable = result.returncode == 0
-
-        rtt_ms = None
-        match = re.search(r'time[=<]([\d\.]+)\s*ms', output)
-        if match:
-            try:
-                rtt_ms = float(match.group(1))
-            except ValueError:
-                rtt_ms = None
-
-        error_msg = None if reachable else (output.strip()[:200] or "No response")
-        return reachable, rtt_ms, error_msg
-    except subprocess.TimeoutExpired:
-        return False, None, "Ping timed out"
-    except FileNotFoundError:
-        # Fallback to pure Python ping if available (avoids missing binary)
-        return _ping_target_ping3(target)
-    except Exception as exc:  # pragma: no cover - defensive
-        logging.warning(f"Ping failed for {target}: {exc}")
-        # Try python fallback before giving up
-        fallback_reachable, fallback_rtt, fallback_err = _ping_target_ping3(target)
-        if fallback_reachable or fallback_err is None:
-            return fallback_reachable, fallback_rtt, fallback_err
-        return False, None, str(exc)
-
-
-def _ping_target_ping3(target: str) -> Tuple[bool, float, str]:
-    """Fallback ping using ping3 library when system ping is unavailable."""
-    if not PING3_AVAILABLE:
-        return False, None, "Ping utility not available on server"
-
-    try:
-        rtt_seconds = ping3.ping(target, timeout=DEFAULT_TIMEOUT, unit="s", privileged=False)
-        if rtt_seconds is None:
-            return False, None, "No response"
-        rtt_ms = float(rtt_seconds) * 1000.0
-        return True, rtt_ms, None
-    except Exception as exc:
-        logging.debug(f"ping3 failed for {target}: {exc}")
-        return False, None, "Ping failed (ping3)"
+def _ping_target(target: str):
+    """Ping one address (see services.netprobe for platform handling)."""
+    return netprobe.ping(target, DEFAULT_TIMEOUT)
 
 
 def _resolve_ip(target: str) -> str:
@@ -178,11 +106,7 @@ def _resolve_ip(target: str) -> str:
 
 
 def _reverse_dns(ip_str: str) -> str:
-    """Attempt reverse DNS lookup for an IP address."""
-    try:
-        return socket.gethostbyaddr(ip_str)[0]
-    except Exception:
-        return None
+    return netprobe.reverse_dns(ip_str)
 
 
 def _discover_target(target: str) -> dict:
@@ -258,7 +182,9 @@ def run_discovery():
     if len(unique_targets) > MAX_TARGETS:
         return validation_error_response({'targets': [f"Too many targets requested ({len(unique_targets)}). Limit is {MAX_TARGETS}."]})
 
-    results = [_discover_target(target) for target in unique_targets]
+    # Probe concurrently; map() keeps results in request order
+    with ThreadPoolExecutor(max_workers=min(DISCOVERY_WORKERS, len(unique_targets))) as pool:
+        results = list(pool.map(_discover_target, unique_targets))
     reachable_count = sum(1 for r in results if r.get('reachable'))
 
     return success_response({

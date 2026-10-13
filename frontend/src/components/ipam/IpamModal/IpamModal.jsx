@@ -1,11 +1,24 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Network, Plus, Pencil, Trash2, Copy, Check, RefreshCw, Loader2,
-  AlertTriangle, ArrowLeft, Layers,
+  AlertTriangle, ArrowLeft, Layers, Router,
 } from 'lucide-react';
 import { subnetApi, locationApi } from '../../../services/api';
+import ScanPanel, { timeAgo } from './ScanPanel';
+import UnknownAddresses from './UnknownAddresses';
+import DhcpPanel from './DhcpPanel';
 
 const STATUS_STYLES = {
+  dhcp: {
+    label: 'DHCP lease, not in inventory',
+    cell: 'bg-cyan-500 dark:bg-cyan-600 border-cyan-600 text-white',
+    swatch: 'bg-cyan-500',
+  },
+  seen: {
+    label: 'Answers ping, not in inventory',
+    cell: 'bg-violet-500 dark:bg-violet-600 border-violet-600 text-white',
+    swatch: 'bg-violet-500',
+  },
   free: {
     label: 'Free',
     cell: 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-orange-500 hover:text-orange-600',
@@ -43,7 +56,7 @@ const STATUS_STYLES = {
   },
 };
 
-const LEGEND_ORDER = ['free', 'monitored', 'unmonitored', 'gateway', 'reserved', 'network'];
+const LEGEND_ORDER = ['free', 'monitored', 'unmonitored', 'seen', 'dhcp', 'gateway', 'reserved', 'network'];
 
 const EMPTY_FORM = {
   cidr: '', name: '', vlan_id: '', gateway: '', location_id: '', reserved_ranges: '', description: '',
@@ -70,6 +83,7 @@ function UtilizationBar({ summary, className = '' }) {
     <div className={`h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex ${className}`}>
       <div className="bg-green-500" style={{ width: pct(summary.monitored) }} />
       <div className="bg-amber-400" style={{ width: pct(summary.unmonitored) }} />
+      <div className="bg-violet-500" style={{ width: pct(summary.unknown_active || 0) }} />
       <div className="ipam-reserved" style={{ width: pct(summary.reserved) }} />
     </div>
   );
@@ -222,7 +236,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
   const [subnets, setSubnets] = useState([]);
   const [unassigned, setUnassigned] = useState([]);
   const [locations, setLocations] = useState([]);
-  const [selectedId, setSelectedId] = useState(null); // number | 'unassigned'
+  const [selectedId, setSelectedId] = useState(null); // number | 'unassigned' | 'dhcp'
   const [detail, setDetail] = useState(null);
   const [loadingList, setLoadingList] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -240,7 +254,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
       setSubnets(subnetData);
       setUnassigned(orphanData);
       setSelectedId((current) => {
-        if (current === 'unassigned') return current;
+        if (current === 'unassigned' || current === 'dhcp') return current;
         if (current && subnetData.some((s) => s.id === current)) return current;
         return subnetData[0]?.id ?? null;
       });
@@ -253,7 +267,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
   }, []);
 
   const loadDetail = useCallback(async (id) => {
-    if (!id || id === 'unassigned') {
+    if (!id || id === 'unassigned' || id === 'dhcp') {
       setDetail(null);
       return;
     }
@@ -322,9 +336,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
     }
   };
 
-  const addDeviceAt = (ip) => onAddDevice?.({
+  const addDeviceAt = (ip, observed = null) => onAddDevice?.({
     ip_address: ip,
     location_id: detail?.subnet?.location_id ?? '',
+    name: observed?.hostname ? observed.hostname.split('.')[0] : '',
+    hostname: observed?.hostname || null,
+    discovered: !!observed,
   });
 
   const renderList = () => (
@@ -361,7 +378,14 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                   {s.name && <div className="text-xs text-gray-600 dark:text-gray-300 truncate">{s.name}</div>}
                   <UtilizationBar summary={s.summary} className="mt-2" />
                   <div className="mt-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                    <span>{formatCount(s.summary?.free)} free</span>
+                    <span>
+                      {formatCount(s.summary?.free)} free
+                      {s.summary?.unknown_active > 0 && (
+                        <span className="ml-1 text-violet-600 dark:text-violet-300" title="Answering or leased but not in inventory">
+                          · {s.summary.unknown_active} unknown
+                        </span>
+                      )}
+                    </span>
                     <span className="flex items-center gap-1">
                       {(s.conflict_count > 0 || s.reserved_error) && <AlertTriangle size={12} className="text-amber-500" />}
                       {s.summary?.utilization_percent ?? 0}% used
@@ -373,6 +397,15 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
           </ul>
         )}
       </div>
+      <button
+        onClick={() => { setFormMode(null); setSelectedId('dhcp'); }}
+        className={`flex items-center gap-2 px-3 py-3 text-sm border-t border-gray-200 dark:border-gray-800 border-l-4 ${
+          selectedId === 'dhcp' && !formMode ? 'border-l-blue-600 bg-blue-50 dark:bg-blue-900/30' : 'border-l-transparent hover:bg-gray-50 dark:hover:bg-gray-800'
+        }`}
+      >
+        <Router size={16} className="text-gray-700 dark:text-gray-200" />
+        <span className="text-gray-700 dark:text-gray-200">DHCP leases</span>
+      </button>
       <button
         onClick={() => { setFormMode(null); setSelectedId('unassigned'); }}
         className={`flex items-center justify-between gap-2 px-3 py-3 text-sm border-t border-gray-200 dark:border-gray-800 border-l-4 ${
@@ -427,6 +460,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
           <span className={`w-4 h-4 rounded flex-shrink-0 ${style.swatch}`} />
           <span className="font-mono font-semibold text-gray-900 dark:text-white">{selectedEntry.ip}</span>
           <span className="text-sm text-gray-600 dark:text-gray-300">{style.label}</span>
+          {selectedEntry.observed && (
+            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              {[selectedEntry.observed.hostname, selectedEntry.observed.mac,
+                selectedEntry.observed.seen && `ping ${timeAgo(selectedEntry.observed.last_seen)}`].filter(Boolean).join(' · ')}
+            </span>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
           {(selectedEntry.devices || []).map((d) => (
@@ -440,12 +479,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
             </button>
           ))}
           <CopyButton text={selectedEntry.ip} />
-          {selectedEntry.status === 'free' && (
+          {(selectedEntry.status === 'free' || selectedEntry.observed) && (
             <button
-              onClick={() => addDeviceAt(selectedEntry.ip)}
+              onClick={() => addDeviceAt(selectedEntry.ip, selectedEntry.observed || null)}
               className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-orange-600 text-white"
             >
-              <Plus size={14} /> Add device here
+              <Plus size={14} /> {selectedEntry.observed ? 'Add to inventory' : 'Add device here'}
             </button>
           )}
         </div>
@@ -495,11 +534,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {[
             ['Free', summary.free, 'text-gray-900 dark:text-white'],
             ['Monitored', summary.monitored, 'text-green-600 dark:text-green-400'],
             ['Monitoring off', summary.unmonitored, 'text-amber-600 dark:text-amber-400'],
+            ['Not in inventory', summary.unknown_active || 0, summary.unknown_active ? 'text-violet-600 dark:text-violet-300' : 'text-gray-600 dark:text-gray-300'],
             ['Reserved', summary.reserved, 'text-gray-600 dark:text-gray-300'],
             ['Usable', summary.usable, 'text-gray-600 dark:text-gray-300'],
           ].map(([label, value, color]) => (
@@ -526,6 +566,13 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
             ))}
           </div>
         )}
+
+        <ScanPanel
+          subnet={subnet}
+          scan={detail.scan}
+          onChanged={() => { loadList(); loadDetail(subnet.id); }}
+          onScanned={() => { loadList(); loadDetail(subnet.id); }}
+        />
 
         {/* Next free */}
         <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
@@ -591,6 +638,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
             This subnet has more than {formatCount(detail.address_listing_limit)} addresses, so the grid is hidden. Free ranges and used addresses are listed below.
           </p>
         )}
+
+        <UnknownAddresses
+          items={detail.unknown_addresses || []}
+          onAdd={(u) => addDeviceAt(u.ip, u)}
+          onSelect={(ip) => { setFilter('all'); setSelectedIp(ip); }}
+        />
 
         {/* Free ranges + used list */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -682,7 +735,9 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                 saving={saving}
                 setSaving={setSaving}
               />
-            ) : selectedId === 'unassigned' ? renderUnassigned() : renderDetail()}
+            ) : selectedId === 'unassigned' ? renderUnassigned()
+              : selectedId === 'dhcp' ? <DhcpPanel onImported={() => loadList()} />
+                : renderDetail()}
           </main>
         </div>
       </div>

@@ -43,3 +43,5 @@ A quick gallery of the dark theme UI states.
   ![Export: Ansible Inventory](./export-ansible.png)
 - Export: NetBox CSV
   ![Export: NetBox CSV](./export-netbox.png)
+- IPAM: Not in Inventory
+  ![IPAM: Not in Inventory](./ipam-unknown.png)
