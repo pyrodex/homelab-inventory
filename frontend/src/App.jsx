@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History, Network, HeartPulse } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History, Network, HeartPulse, Share2 } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -12,6 +12,7 @@ import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 import HistoryModal from './components/history/HistoryModal.jsx';
 import IpamModal from './components/ipam/IpamModal';
 import PrometheusSdModal from './components/prometheus/PrometheusSdModal/PrometheusSdModal';
+import ExportModal from './components/exports/ExportModal/ExportModal';
 
 // Services
 import { deviceApi, statsApi, prometheusApi, tagApi } from './services/api';
@@ -45,6 +46,7 @@ function App() {
   const [ipamRefreshKey, setIpamRefreshKey] = useState(0);
   const [promStatus, setPromStatus] = useState(null);
   const [showSdModal, setShowSdModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [allTags, setAllTags] = useState([]);
   const [activeTags, setActiveTags] = useState([]);
   const [showOtherActions, setShowOtherActions] = useState(false);
@@ -412,6 +414,13 @@ function App() {
                         Bulk Ops
                       </button>
                       <button
+                        onClick={() => { setShowExportModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <Share2 size={16} className="flex-shrink-0" />
+                        Export (Ansible / NetBox)
+                      </button>
+                      <button
                         onClick={() => { setShowHistoryModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
@@ -496,6 +505,12 @@ function App() {
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
                       <span className="flex items-center gap-2"><FileDown size={18} /> Bulk Ops</span>
+                    </button>
+                    <button
+                      onClick={() => { setShowExportModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><Share2 size={18} /> Export (Ansible / NetBox)</span>
                     </button>
                     <button
                       onClick={() => { setShowHistoryModal(true); setShowActionMenu(false); }}
@@ -772,6 +787,8 @@ function App() {
         />
       )}
       
+      {showExportModal && <ExportModal onClose={() => setShowExportModal(false)} />}
+
       {showSdModal && (
         <PrometheusSdModal
           status={promStatus}

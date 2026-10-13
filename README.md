@@ -35,6 +35,10 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Impact Analysis**: See everything that goes down with a device, as a dependency tree
 - **Everywhere**: Tags work in search, bulk CSV/JSON import & export, history, and Prometheus labels (`tags`, `runs_on`)
 
+### Exports
+- **Ansible Dynamic Inventory**: Drop-in script (stdlib only) or static YAML; groups by type, location, vendor, tag, network, and host
+- **NetBox CSV**: Ordered bulk-import files (sites → device types → devices → VMs → VLANs → prefixes → IPs) matching NetBox 4.7
+
 ### IPAM / Subnets
 - **CIDR Subnets**: Define IPv4/IPv6 subnets with name, VLAN, gateway, location, and description
 - **Free Address View**: Color-coded address grid shows monitored, unmonitored, reserved, gateway, and free IPs
@@ -394,6 +398,13 @@ scrape_configs:
 - **Impact**: open any device to see *"If this goes down, N devices are affected"* with the full dependency tree.
 - **Prometheus**: targets get `tags` (as `,prod,web,`, so `tags=~".*,prod,.*"` matches exactly one tag) and `runs_on` labels.
 
+### Exporting to Ansible and NetBox
+
+Open **Other Actions → Export (Ansible / NetBox)**. Filters (tags, monitoring enabled) apply to both.
+
+- **Ansible**: copy the setup commands shown (they download the inventory script from your instance), or download a static YAML inventory. See [contrib/ansible](contrib/ansible/README.md) for groups and host variables. Hostnames are stable across filters.
+- **NetBox**: download the ZIP and import the files in numbered order. Locations become sites, device types become roles, VMs attach to their *runs on* host, and IPs use their subnet's prefix length. Subnets, VLANs and gateways are always included, because they aren't tagged.
+
 ### Finding Free IPs (IPAM)
 
 1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **IPAM / Subnets**.
@@ -579,6 +590,12 @@ All API endpoints are prefixed with `/api`
 - `PUT /api/links/:id` - Update `port` / `notes`
 - `DELETE /api/links/:id` - Remove a relationship
 - `GET /api/devices/:id/impact[?types=runs_on,powered_by]` - Everything that transitively depends on a device
+
+#### Exports
+- `GET /api/export/ansible` - Dynamic inventory JSON (`--list` shape); `?host=<name>` for one host's vars; `?format=yaml` for a static inventory
+- `GET /api/export/ansible/script` - The standalone inventory script
+- `GET /api/export/netbox` - ZIP of NetBox import CSVs; `?file=<key>` for one CSV; `?summary=true` for row counts; `?default_site=`
+- Both accept `?tag=` (all must match) and `?monitoring_enabled=true`; Ansible also takes `?include_all_types=true`
 
 #### Subnets (IPAM)
 - `GET /api/subnets` - List subnets with utilization summaries

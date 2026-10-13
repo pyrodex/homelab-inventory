@@ -26,6 +26,7 @@ from routes.discovery import register_discovery_routes
 from routes.health import register_health_routes
 from routes.subnets import register_subnet_routes
 from routes.links import register_link_routes
+from routes.exports import register_export_routes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -165,6 +166,7 @@ register_health_routes(app, limiter)
 register_discovery_routes(app, limiter)
 register_subnet_routes(app, limiter)
 register_link_routes(app, limiter)
+register_export_routes(app, limiter)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
