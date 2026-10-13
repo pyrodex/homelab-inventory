@@ -97,11 +97,13 @@ def import_leases(text: str, source: str, now: Optional[datetime] = None) -> dic
     rows = {o.ip: o for o in IpObservation.query.filter(IpObservation.ip.in_(list(by_ip))).all()} if by_ip else {}
     naive_now = now.astimezone(timezone.utc).replace(tzinfo=None)
     active = expired = 0
+    new_ips = []
     for ip, lease in by_ip.items():
         row = rows.get(ip)
         if row is None:
             row = IpObservation(ip=ip)
             db.session.add(row)
+            new_ips.append(ip)
         expires = lease['expires'].astimezone(timezone.utc).replace(tzinfo=None) if lease['expires'] else None
         is_active = expires is None or expires > naive_now
         row.dhcp_source = source
@@ -127,6 +129,11 @@ def import_leases(text: str, source: str, now: Optional[datetime] = None) -> dic
         released += 1
 
     db.session.commit()
+    try:
+        from services.webhooks import emit_discovered
+        emit_discovered(new_ips, 'dhcp')
+    except Exception as exc:  # never let notifications break an import
+        logger.warning(f"Webhook emit after lease import failed: {exc}")
     return {
         'source': source,
         'leases': len(by_ip),

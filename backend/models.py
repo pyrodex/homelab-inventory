@@ -337,3 +337,75 @@ class IpObservation(db.Model):
             'dhcp_expires': _iso_utc(self.dhcp_expires),
             'dhcp_source': self.dhcp_source,
         }
+
+
+WEBHOOK_EVENTS = (
+    'device.created',
+    'device.updated',
+    'device.deleted',
+    'device.relationship_changed',
+    'ipam.address_discovered',
+)
+
+
+class Webhook(db.Model):
+    """Outgoing JSON webhook subscribed to inventory events."""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    url = db.Column(db.String(2048), nullable=False)
+    secret = db.Column(db.String(255))  # HMAC-SHA256 key; never returned by the API
+    events = db.Column(db.String(500), nullable=False, default='*')  # comma list or '*'
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    deliveries = db.relationship('WebhookDelivery', backref='webhook', lazy='dynamic',
+                                 cascade='all, delete-orphan', passive_deletes=True)
+
+    def event_list(self):
+        return [e.strip() for e in (self.events or '*').split(',') if e.strip()]
+
+    def wants(self, event):
+        events = self.event_list()
+        return '*' in events or event in events
+
+    def to_dict(self):
+        last = self.deliveries.order_by(WebhookDelivery.id.desc()).first()
+        return {
+            'id': self.id,
+            'name': self.name,
+            'url': self.url,
+            'events': self.event_list(),
+            'enabled': bool(self.enabled),
+            'has_secret': bool(self.secret),
+            'last_delivery': last.to_dict() if last else None,
+            'created_at': _iso_utc(self.created_at),
+            'updated_at': _iso_utc(self.updated_at),
+        }
+
+
+class WebhookDelivery(db.Model):
+    """Delivery log (most recent attempts per webhook are kept)."""
+    id = db.Column(db.Integer, primary_key=True)
+    webhook_id = db.Column(db.Integer, db.ForeignKey('webhook.id', ondelete='CASCADE'), nullable=False, index=True)
+    delivery_id = db.Column(db.String(36), nullable=False, index=True)
+    event = db.Column(db.String(64), nullable=False)
+    attempt = db.Column(db.Integer, nullable=False, default=1)
+    status_code = db.Column(db.Integer)
+    success = db.Column(db.Boolean, nullable=False, default=False)
+    error = db.Column(db.String(500))
+    duration_ms = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'delivery_id': self.delivery_id,
+            'event': self.event,
+            'attempt': self.attempt,
+            'status_code': self.status_code,
+            'success': bool(self.success),
+            'error': self.error,
+            'duration_ms': self.duration_ms,
+            'created_at': _iso_utc(self.created_at),
+        }

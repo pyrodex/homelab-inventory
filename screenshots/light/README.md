@@ -46,3 +46,5 @@ A quick gallery of the light theme UI states.
   ![IPAM: Not in Inventory](./ipam-unknown.png)
 - IPAM: DHCP Leases
   ![IPAM: DHCP Leases](./ipam-dhcp.png)
+- Webhooks
+  ![Webhooks](./webhooks.png)

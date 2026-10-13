@@ -361,3 +361,13 @@ export const exportApi = {
   netboxZipUrl: (filters) => `${API_URL}/export/netbox?${exportQuery(filters)}`,
   netboxFileUrl: (key, filters) => `${API_URL}/export/netbox?file=${encodeURIComponent(key)}&${exportQuery(filters)}`,
 };
+
+// Webhook API calls
+export const webhookApi = {
+  getAll: () => apiRequest('/webhooks'),
+  create: (data) => apiRequest('/webhooks', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => apiRequest(`/webhooks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => apiRequest(`/webhooks/${id}`, { method: 'DELETE' }),
+  test: (id) => apiRequest(`/webhooks/${id}/test`, { method: 'POST' }),
+  deliveries: (id) => apiRequest(`/webhooks/${id}/deliveries`),
+};

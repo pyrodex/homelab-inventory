@@ -15,7 +15,7 @@ import pytest
 BACKEND = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXPECTED_TABLES = {
     'device', 'vendor', 'model', 'location', 'monitor', 'device_history', 'subnet',
-    'tag', 'device_tag', 'device_link', 'ip_observation', 'alembic_version',
+    'tag', 'device_tag', 'device_link', 'ip_observation', 'webhook', 'webhook_delivery', 'alembic_version',
 }
 
 

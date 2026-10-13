@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit2, Trash2 } from 'lucide-react';
 import { vendorApi, modelApi, locationApi } from '../../../services/api';
 import TagsTab from './TagsTab';
+import WebhooksTab from './WebhooksTab';
 
 function AdminModal({ onClose, onError }) {
   const [activeTab, setActiveTab] = useState('vendors');
@@ -225,6 +226,16 @@ function AdminModal({ onClose, onError }) {
             >
               Tags
             </button>
+            <button 
+              onClick={() => setActiveTab('webhooks')} 
+              className={`px-4 py-2.5 rounded-lg font-medium transition-colors touch-manipulation min-h-[44px] ${
+                activeTab === 'webhooks' 
+                  ? 'bg-blue-600 text-white active:bg-blue-700' 
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 active:bg-gray-300 dark:active:bg-gray-700'
+              }`}
+            >
+              Webhooks
+            </button>
           </div>
         </div>
         
@@ -260,6 +271,8 @@ function AdminModal({ onClose, onError }) {
             />
           ) : activeTab === 'tags' ? (
             <TagsTab onError={onError} />
+          ) : activeTab === 'webhooks' ? (
+            <WebhooksTab onError={onError} />
           ) : (
             <LocationsTab
               locations={locations}

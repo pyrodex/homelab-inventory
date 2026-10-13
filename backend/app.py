@@ -27,6 +27,7 @@ from routes.health import register_health_routes
 from routes.subnets import register_subnet_routes
 from routes.links import register_link_routes
 from routes.exports import register_export_routes
+from routes.webhooks import register_webhook_routes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -51,6 +52,10 @@ logging.basicConfig(
 
 # Initialize database
 db.init_app(app)
+
+# Outgoing webhooks (listens for committed device history)
+from services.webhooks import dispatcher as webhook_dispatcher
+webhook_dispatcher.init_app(app)
 
 # Enable foreign key constraints in SQLite
 @event.listens_for(Engine, "connect")
@@ -167,6 +172,7 @@ register_discovery_routes(app, limiter)
 register_subnet_routes(app, limiter)
 register_link_routes(app, limiter)
 register_export_routes(app, limiter)
+register_webhook_routes(app, limiter)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])
