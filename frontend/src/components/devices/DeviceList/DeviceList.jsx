@@ -11,7 +11,8 @@ function DeviceList({
   onEdit, 
   onClone, 
   onDelete, 
-  onClearSearch 
+  onClearSearch,
+  statusById = {}
 }) {
   const filteredDevices = devices.filter(device => {
     if (!searchTerm) return true;
@@ -62,6 +63,7 @@ function DeviceList({
         <DeviceCard 
           key={device.id} 
           device={device} 
+          status={statusById[device.id]}
           viewMode={viewMode} 
           onToggleMonitoring={onToggleMonitoring} 
           onEdit={onEdit} 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History, Network } from 'lucide-react';
+import { Plus, Server, Activity, Download, Settings, List, Grid, Check, X, FileDown, ChevronDown, Sun, Moon, Monitor, Radar, MoreHorizontal, History, Network, HeartPulse } from 'lucide-react';
 
 // Components
 import ErrorAlert from './components/common/ErrorAlert/ErrorAlert';
@@ -11,6 +11,7 @@ import DiscoveryModal from './components/discovery/DiscoveryModal/DiscoveryModal
 import AdvancedSearch from './components/search/AdvancedSearch/AdvancedSearch';
 import HistoryModal from './components/history/HistoryModal.jsx';
 import IpamModal from './components/ipam/IpamModal';
+import PrometheusSdModal from './components/prometheus/PrometheusSdModal/PrometheusSdModal';
 
 // Services
 import { deviceApi, statsApi, prometheusApi } from './services/api';
@@ -41,6 +42,8 @@ function App() {
   const [showIpamModal, setShowIpamModal] = useState(false);
   const [ipamPrefill, setIpamPrefill] = useState(null);
   const [ipamRefreshKey, setIpamRefreshKey] = useState(0);
+  const [promStatus, setPromStatus] = useState(null);
+  const [showSdModal, setShowSdModal] = useState(false);
   const [showOtherActions, setShowOtherActions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
@@ -124,6 +127,26 @@ function App() {
     fetchAllDevices();
   }, []);
 
+  const fetchPromStatus = async (refresh = false) => {
+    try {
+      setPromStatus(await prometheusApi.status(refresh));
+    } catch (err) {
+      setPromStatus({ enabled: false, error: err.message, devices: {} });
+    }
+  };
+
+  // Live status: poll every 60s while the tab is visible
+  useEffect(() => {
+    fetchPromStatus();
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchPromStatus();
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const promEnabled = !!promStatus?.enabled;
+  const statusById = promStatus?.devices || {};
+
   const handleSearchResults = (results) => {
     setSearchResults(results);
     if (results) {
@@ -175,6 +198,7 @@ function App() {
       });
       fetchDevices();
       fetchStats();
+      fetchPromStatus(true);
     } catch (err) {
       console.error('Failed to toggle monitoring:', err);
       setError(err.message || 'Failed to toggle monitoring');
@@ -272,6 +296,7 @@ function App() {
     fetchStats();
     fetchAllDevices();
     setIpamRefreshKey((k) => k + 1);
+    fetchPromStatus(true);
     handleModalClose();
   };
 
@@ -346,6 +371,13 @@ function App() {
                       >
                         <Download size={16} className="flex-shrink-0" />
                         Download Config
+                      </button>
+                      <button
+                        onClick={() => { setShowSdModal(true); setShowOtherActions(false); }}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                      >
+                        <HeartPulse size={16} className="flex-shrink-0" />
+                        Prometheus SD &amp; Status
                       </button>
                       <button
                         onClick={() => { setShowBulkModal(true); setShowOtherActions(false); }}
@@ -461,6 +493,12 @@ function App() {
                       <span className="flex items-center gap-2"><Check size={18} /> Write Prometheus</span>
                     </button>
                     <button
+                      onClick={() => { setShowSdModal(true); setShowActionMenu(false); }}
+                      className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+                    >
+                      <span className="flex items-center gap-2"><HeartPulse size={18} /> Prometheus SD &amp; Status</span>
+                    </button>
+                    <button
                       onClick={() => { setShowAdminModal(true); setShowActionMenu(false); }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                     >
@@ -477,7 +515,7 @@ function App() {
       {/* Stats Cards */}
       {stats && (
         <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          <div className={`grid grid-cols-1 ${promEnabled ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:gap-4`}>
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
               <div className="flex items-center justify-between">
                 <div>
@@ -505,6 +543,33 @@ function App() {
                 <X className="text-red-600" size={40} />
               </div>
             </div>
+            {promEnabled && (
+              <button
+                type="button"
+                onClick={() => setShowSdModal(true)}
+                className="text-left bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors hover:ring-2 hover:ring-blue-500"
+                title={promStatus.error || `${promStatus.summary?.up ?? 0} up, ${promStatus.summary?.down ?? 0} down, ${promStatus.summary?.degraded ?? 0} degraded, ${promStatus.summary?.unknown ?? 0} not scraped`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">Prometheus</p>
+                    {promStatus.error ? (
+                      <p className="text-base font-semibold text-amber-600 mt-2">Unreachable</p>
+                    ) : (
+                      <p className="text-3xl font-bold tabular-nums">
+                        <span className="text-green-600">{promStatus.summary?.up ?? 0}</span>
+                        <span className="text-gray-400 text-xl"> up · </span>
+                        <span className={(promStatus.summary?.down || promStatus.summary?.degraded) ? 'text-red-600' : 'text-gray-400'}>
+                          {(promStatus.summary?.down ?? 0) + (promStatus.summary?.degraded ?? 0)}
+                        </span>
+                        <span className="text-gray-400 text-xl"> {((promStatus.summary?.down ?? 0) + (promStatus.summary?.degraded ?? 0)) === 1 ? 'issue' : 'issues'}</span>
+                      </p>
+                    )}
+                  </div>
+                  <HeartPulse className={promStatus.error ? 'text-amber-500' : 'text-blue-600'} size={40} />
+                </div>
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -602,6 +667,7 @@ function App() {
             onEdit={setEditingDevice} 
             onClone={handleClone} 
             onDelete={requestDelete} 
+            statusById={statusById}
             onClearSearch={() => {
               setSearchTerm('');
               setSearchResults(null);
@@ -665,6 +731,13 @@ function App() {
         />
       )}
       
+      {showSdModal && (
+        <PrometheusSdModal
+          status={promStatus}
+          onClose={() => setShowSdModal(false)}
+        />
+      )}
+
       {showHistoryModal && (
         <HistoryModal
           onClose={() => setShowHistoryModal(false)}

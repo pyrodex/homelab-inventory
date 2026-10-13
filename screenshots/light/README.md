@@ -30,3 +30,7 @@ A quick gallery of the light theme UI states.
 
 - IPAM / Subnets
   ![IPAM / Subnets](./ipam.png)
+- Live Prometheus Status
+  ![Live Prometheus Status](./device-status.png)
+- Prometheus Service Discovery
+  ![Prometheus Service Discovery](./prometheus-sd.png)
