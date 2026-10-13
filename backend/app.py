@@ -195,7 +195,36 @@ try:
 except Exception as exc:
     logging.error(f"Database initialization failed: {exc}", exc_info=True)
 
+def start_background_workers():
+    """
+    IPAM ping-sweep scheduler and dnsmasq lease-file watcher. Started only
+    from the entrypoint (never on import, so tests and tools stay quiet).
+    Disable with IPAM_BACKGROUND_WORKERS=false.
+    """
+    import threading
+    from services.ipam_scan import ScanScheduler
+    from services.dhcp_leases import LeaseFileWatcher, configured_lease_paths
+
+    if os.environ.get('IPAM_BACKGROUND_WORKERS', 'true').lower() in ('false', '0', 'no', 'off'):
+        logging.info("IPAM background workers disabled via IPAM_BACKGROUND_WORKERS.")
+        return
+    # With the debug reloader, only the child process should run workers
+    if app.config.get('DEBUG') and os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+        return
+
+    scheduler = ScanScheduler(app)
+    threading.Thread(target=scheduler.run, name='ipam-scheduler', daemon=True).start()
+    app.extensions['ipam_scheduler'] = scheduler
+
+    watcher = LeaseFileWatcher(app, interval_seconds=int(os.environ.get('DNSMASQ_LEASES_POLL_SECONDS', '60') or 60))
+    app.extensions['lease_watcher'] = watcher
+    threading.Thread(target=watcher.run, name='dhcp-lease-watcher', daemon=True).start()
+    paths = configured_lease_paths()
+    logging.info(f"IPAM workers started (lease files: {', '.join(paths) if paths else 'none'}).")
+
+
 if __name__ == '__main__':
     init_database()
     ensure_tables_exist()
+    start_background_workers()
     app.run(host='0.0.0.0', port=5000, debug=app.config.get('DEBUG', False))

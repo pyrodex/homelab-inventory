@@ -46,6 +46,8 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Reserved Ranges**: Exclude DHCP pools, VIPs, or future-use blocks from the free pool
 - **Monitor-aware**: IPs referenced by monitor endpoints (e.g. `http://10.0.0.5/admin`) count as in use
 - **Hygiene Checks**: Flags duplicate IP assignments and devices whose IP isn't inside any defined subnet
+- **Ping Sweeps**: Scheduled per-subnet sweeps (IPv4) find addresses that answer but aren't in inventory
+- **DHCP Leases**: Import dnsmasq leases (watched file, `curl` push, or upload) so active leases aren't handed out twice
 
 ### User Interface
 - **Modern React UI**: Responsive interface built with React and Tailwind CSS
@@ -272,6 +274,12 @@ The repo ships with a ready-to-run Compose file that pulls the pre-built images 
 | `PROMETHEUS_STATUS_CACHE_SECONDS` | How long to cache status queries | `15` |
 | `PROMETHEUS_TIMEOUT_SECONDS` | Timeout for each status query | `5` |
 | `PROMETHEUS_SD_TOKEN` | If set, `/api/prometheus/sd` requires `Authorization: Bearer <token>` | — |
+| `IPAM_BACKGROUND_WORKERS` | Run the ping-sweep scheduler and lease-file watcher | `true` |
+| `IPAM_SCAN_MAX_HOSTS` | Largest subnet (usable hosts) that may be swept | `1024` |
+| `IPAM_STALE_AFTER_HOURS` | How long a ping-seen address counts as in use | `72` |
+| `DNSMASQ_LEASES_PATH` | Comma-separated dnsmasq lease files to watch (mount them into the container) | — |
+| `DNSMASQ_LEASES_POLL_SECONDS` | How often watched lease files are checked for changes | `60` |
+| `IPAM_LEASES_TOKEN` | If set, lease uploads require `Authorization: Bearer <token>` | — |
 
 #### Docker Compose
 
@@ -417,6 +425,17 @@ Open **Other Actions → Export (Ansible / NetBox)**. Filters (tags, monitoring 
 5. **Outside any subnet** lists devices whose IP isn't covered by a defined subnet.
 
 Subnets larger than 4,096 addresses skip the grid and show compressed free ranges instead. Devices addressed by hostname aren't counted, since their IP isn't known.
+
+**What's really on the network.** Inventory isn't the only thing using addresses, so IPAM can also look at the network:
+
+- **Ping sweeps**: in a subnet, tick **Ping sweep** and pick an interval, or click **Scan now**. Addresses that answered within `IPAM_STALE_AFTER_HOURS` show in violet and stop counting as free. Sweeps are IPv4-only and limited to `IPAM_SCAN_MAX_HOSTS`. A /24 takes about a second, since pings run in parallel.
+- **DHCP leases (dnsmasq)**: active leases show in cyan with hostname and MAC. Feed them in any of three ways:
+  - Mount the lease file and set `DNSMASQ_LEASES_PATH=/leases/dnsmasq.leases`; it's re-read when it changes.
+  - Push it from the dnsmasq host with cron: `curl -fsS --data-binary @/var/lib/misc/dnsmasq.leases "http://homelab-inventory:5000/api/ipam/dhcp/leases?source=pihole"`
+  - Upload or paste it under **IPAM → DHCP leases**.
+
+  Each source is a snapshot: leases missing from its next import are released. Expired leases stop counting automatically.
+- **On the network, not in inventory** lists every such address with its evidence. Click **Add** to create a device with the IP and hostname prefilled.
 
 ### Managing Vendors, Models, and Locations
 
@@ -605,6 +624,11 @@ All API endpoints are prefixed with `/api`
 - `DELETE /api/subnets/:id` - Delete a subnet (devices are untouched)
 - `GET /api/subnets/:id/next-free?count=N` - Next N free addresses (max 256)
 - `GET /api/subnets/unassigned` - Devices whose IP isn't inside any defined subnet
+- `PUT /api/subnets/:id` also accepts `scan_enabled` and `scan_interval_minutes` (5–10080)
+- `POST /api/subnets/:id/scan` - Start a ping sweep now (202; 409 if one is running)
+- `GET /api/subnets/:id/scan` - Sweep status and last result
+- `POST /api/ipam/dhcp/leases[?source=name]` - Import a dnsmasq lease file (raw body or multipart `file`)
+- `GET /api/ipam/dhcp/status` - Watched files, last import results, active leases per source
 
 ### API Response Format
 

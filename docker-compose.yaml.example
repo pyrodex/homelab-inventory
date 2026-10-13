@@ -7,6 +7,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./targets:/app/prometheus_targets
+      # - /var/lib/misc/dnsmasq.leases:/leases/dnsmasq.leases:ro
     environment:
       - FLASK_ENV=production
       - DATABASE_PATH=/app/data/homelab.db
@@ -21,6 +22,9 @@ services:
       # - PROMETHEUS_BEARER_TOKEN=
       # Require a bearer token on /api/prometheus/sd (optional)
       # - PROMETHEUS_SD_TOKEN=change-me
+      # IPAM: watch a dnsmasq lease file (mount it read-only below)
+      # - DNSMASQ_LEASES_PATH=/leases/dnsmasq.leases
+      # - IPAM_LEASES_TOKEN=change-me   # require a token for lease uploads
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health').read()"]
       interval: 30s

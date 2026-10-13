@@ -287,11 +287,25 @@ function App() {
     setShowDiscoveryModal(false);
   };
 
-  const handleIpamAdd = ({ ip_address, location_id }) => {
+  const handleIpamAdd = ({ ip_address, location_id, name, hostname, discovered }) => {
     setEditingDevice(null);
     setCloningDevice(null);
-    setDiscoveryPrefill(null);
-    setIpamPrefill({ ip_address, location_id: location_id ?? '', networks: 'LAN', monitoring_enabled: true });
+    if (discovered) {
+      // Seen on the network: use the discovery flow (quick add, relaxed required fields)
+      setIpamPrefill(null);
+      setDiscoveryPrefill({
+        name: name || ip_address,
+        device_type: 'icmp_only',
+        ip_address,
+        location_id: location_id ?? '',
+        deviceFunction: hostname ? `Discovered host (${hostname})` : 'Discovered host',
+        networks: 'LAN',
+        monitoring_enabled: true,
+      });
+    } else {
+      setDiscoveryPrefill(null);
+      setIpamPrefill({ ip_address, location_id: location_id ?? '', networks: 'LAN', monitoring_enabled: true });
+    }
     setShowAddModal(true);
   };
 
