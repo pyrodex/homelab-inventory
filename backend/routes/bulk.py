@@ -10,6 +10,7 @@ import logging
 
 from models import db, Device, Vendor, Model, Location, DeviceHistory
 from utils.history import extract_device_state, compute_diff
+from utils.tags import parse_tag_input, resolve_tags
 from validators import DeviceSchema
 from exceptions import DatabaseError, ValidationError
 from marshmallow import ValidationError as MarshmallowValidationError
@@ -52,8 +53,13 @@ def bulk_import_devices():
             
             for idx, device_data in enumerate(data):
                 try:
+                    if not isinstance(device_data, dict):
+                        raise ValueError('Each device must be an object')
+                    device_data = dict(device_data)
+                    tag_names = parse_tag_input(device_data.pop('tags', None))
                     validated_data = schema.load(device_data)
                     device = Device(**validated_data)
+                    device.tags = resolve_tags(tag_names)
                     db.session.add(device)
                     db.session.flush()
                     history_entries.append(DeviceHistory(
@@ -72,7 +78,7 @@ def bulk_import_devices():
                 except Exception as e:
                     devices_failed.append({
                         'index': idx,
-                        'name': device_data.get('name', f'Device {idx+1}'),
+                        'name': device_data.get('name', f'Device {idx+1}') if isinstance(device_data, dict) else f'Device {idx+1}',
                         'error': str(e)
                     })
             
@@ -140,8 +146,10 @@ def bulk_import_devices():
                         if location:
                             device_data['location_id'] = location.id
                     
+                    tag_names = parse_tag_input(row.get('tags') or None)
                     validated_data = schema.load(device_data)
                     device = Device(**validated_data)
+                    device.tags = resolve_tags(tag_names)
                     db.session.add(device)
                     db.session.flush()
                     history_entries.append(DeviceHistory(
@@ -199,7 +207,7 @@ def bulk_export_devices():
         fieldnames = [
             'id', 'name', 'device_type', 'ip_address', 'deviceFunction', 'vendor', 'model',
             'location', 'serial_number', 'networks', 'interface_type', 
-            'poe_powered', 'poe_standards', 'monitoring_enabled', 'created_at', 'updated_at'
+            'poe_powered', 'poe_standards', 'monitoring_enabled', 'tags', 'created_at', 'updated_at'
         ]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
@@ -220,6 +228,7 @@ def bulk_export_devices():
                 'poe_powered': 'true' if device.poe_powered else 'false',
                 'poe_standards': device.poe_standards or '',
                 'monitoring_enabled': 'true' if device.monitoring_enabled else 'false',
+                'tags': ','.join(t.name for t in device.tags),
                 'created_at': device.created_at.isoformat() if device.created_at else '',
                 'updated_at': device.updated_at.isoformat() if device.updated_at else ''
             })

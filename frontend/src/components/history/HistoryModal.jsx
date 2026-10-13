@@ -24,6 +24,8 @@ const FIELD_LABELS = {
   poe_powered: 'PoE Powered',
   poe_standards: 'PoE Standards',
   monitoring_enabled: 'Monitoring',
+  tags: 'Tags',
+  link: 'Relationship',
 };
 
 const formatValue = (value) => {

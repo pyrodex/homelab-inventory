@@ -243,6 +243,7 @@ export const searchApi = {
     if (filters.monitoring_enabled !== undefined) params.append('monitoring_enabled', filters.monitoring_enabled);
     if (filters.poe_powered !== undefined) params.append('poe_powered', filters.poe_powered);
     if (filters.has_ip !== undefined) params.append('has_ip', filters.has_ip);
+    (filters.tags || []).forEach((tag) => params.append('tag', tag));
     
     return apiRequest(`/search/devices?${params.toString()}`);
   },
@@ -294,4 +295,25 @@ export const subnetApi = {
   delete: (id) => apiRequest(`/subnets/${id}`, {
     method: 'DELETE',
   }),
+};
+
+// Tag API calls
+export const tagApi = {
+  getAll: () => apiRequest('/tags'),
+  rename: (id, name) => apiRequest(`/tags/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
+  delete: (id) => apiRequest(`/tags/${id}`, { method: 'DELETE' }),
+};
+
+// Device relationship (link) API calls
+export const linkApi = {
+  list: (deviceId) => apiRequest(`/devices/${deviceId}/links`),
+  create: (deviceId, link) => apiRequest(`/devices/${deviceId}/links`, {
+    method: 'POST',
+    body: JSON.stringify(link),
+  }),
+  update: (linkId, data) => apiRequest(`/links/${linkId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (linkId) => apiRequest(`/links/${linkId}`, { method: 'DELETE' }),
+  impact: (deviceId, types = null) => apiRequest(
+    `/devices/${deviceId}/impact${types ? `?types=${encodeURIComponent(types.join(','))}` : ''}`
+  ),
 };

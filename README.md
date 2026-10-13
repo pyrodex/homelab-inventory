@@ -29,6 +29,12 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames
 - **Inline Add**: Add discovered devices one-by-one without leaving the results list
 
+### Tags & Relationships
+- **Tags**: Free-form `#tags` on devices with autocomplete; click any tag to filter the list (multiple tags = all must match)
+- **Relationships**: Record what a device *runs on* (VM → host), is *connected to* (→ switch, with port) and is *powered by* (→ UPS/PDU, with outlet)
+- **Impact Analysis**: See everything that goes down with a device, as a dependency tree
+- **Everywhere**: Tags work in search, bulk CSV/JSON import & export, history, and Prometheus labels (`tags`, `runs_on`)
+
 ### IPAM / Subnets
 - **CIDR Subnets**: Define IPv4/IPv6 subnets with name, VLAN, gateway, location, and description
 - **Free Address View**: Color-coded address grid shows monitored, unmonitored, reserved, gateway, and free IPs
@@ -378,6 +384,16 @@ scrape_configs:
 3. Run discovery to see ICMP reachability (with RTT) and reverse DNS results.
 4. Click **Add Device** on any row to prefill and save a device while staying on the discovery results.
 
+### Tags and Relationships
+
+- **Tags**: in the device form, type a tag and press Enter or comma. Tags are normalized to lowercase slugs (`Home Lab` → `home-lab`). Click a tag on any device, or in the filter bar, to filter. Rename, merge, or delete tags under **Admin → Tags**.
+- **Relationships**: in the device form's **Relationships** section, pick a type and a device:
+  - **Runs on**: VM or container → host (one host per device; loops are rejected)
+  - **Connected to**: device → switch or AP, with an optional port
+  - **Powered by**: device → UPS, PDU, or PoE switch, with an optional outlet
+- **Impact**: open any device to see *"If this goes down, N devices are affected"* with the full dependency tree.
+- **Prometheus**: targets get `tags` (as `,prod,web,`, so `tags=~".*,prod,.*"` matches exactly one tag) and `runs_on` labels.
+
 ### Finding Free IPs (IPAM)
 
 1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **IPAM / Subnets**.
@@ -551,6 +567,18 @@ All API endpoints are prefixed with `/api`
 - `POST /api/discovery` - Probe IPs/hostnames/ranges/CIDRs with ICMP + reverse DNS
   - Body supports `targets` (array or comma/newline string), `range` (`192.168.1.10-192.168.1.20`), and `cidr` (`192.168.1.0/28`)
   - Returns reachability summary, RTT (ms), resolved IP, and PTR hostname when available
+
+#### Tags & Relationships
+- `GET /api/devices?tag=prod&tag=storage` - Filter devices by tags (all must match); also `tag` on `/api/search/devices`
+- Device create/update accept `tags` as a list or comma-separated string
+- `GET /api/tags` - All tags with device counts
+- `PUT /api/tags/:id` - Rename (renaming onto an existing tag merges them)
+- `DELETE /api/tags/:id` - Delete a tag and remove it from devices
+- `GET /api/devices/:id/links` - Outgoing and incoming relationships
+- `POST /api/devices/:id/links` - Create (`target_id`, `link_type`: `runs_on` | `connected_to` | `powered_by`, `port`, `notes`)
+- `PUT /api/links/:id` - Update `port` / `notes`
+- `DELETE /api/links/:id` - Remove a relationship
+- `GET /api/devices/:id/impact[?types=runs_on,powered_by]` - Everything that transitively depends on a device
 
 #### Subnets (IPAM)
 - `GET /api/subnets` - List subnets with utilization summaries

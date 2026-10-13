@@ -65,6 +65,28 @@ class Model(db.Model):
         }
 
 
+device_tags = db.Table(
+    'device_tag',
+    db.Column('device_id', db.Integer, db.ForeignKey('device.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id', ondelete='CASCADE'), primary_key=True, index=True),
+)
+
+
+class Tag(db.Model):
+    """Free-form label attached to devices (e.g. prod, storage, k8s)"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False, unique=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'device_count': len(self.devices),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class Device(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, index=True)
@@ -85,6 +107,12 @@ class Device(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     monitors = db.relationship('Monitor', backref='device', lazy=True, cascade='all, delete-orphan')
+    tags = db.relationship('Tag', secondary=device_tags, backref=db.backref('devices', lazy=True),
+                           lazy='selectin', order_by='Tag.name')
+    outgoing_links = db.relationship('DeviceLink', foreign_keys='DeviceLink.source_id',
+                                     backref='source', lazy=True, cascade='all, delete-orphan')
+    incoming_links = db.relationship('DeviceLink', foreign_keys='DeviceLink.target_id',
+                                     backref='target', lazy=True, cascade='all, delete-orphan')
     
     # Composite indexes for common query patterns
     __table_args__ = (
@@ -112,6 +140,8 @@ class Device(db.Model):
             'poe_standards': self.poe_standards,
             'monitoring_enabled': self.monitoring_enabled,
             'monitors': [m.to_dict() for m in self.monitors],
+            'tags': [t.name for t in self.tags],
+            'links': [l.to_dict() for l in self.outgoing_links],
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat()
         }
@@ -212,4 +242,40 @@ class Subnet(db.Model):
             'location_name': self.location.name if self.location else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+LINK_TYPES = ('runs_on', 'connected_to', 'powered_by')
+
+
+class DeviceLink(db.Model):
+    """
+    Directed dependency between two devices: source depends on target.
+      runs_on      - VM/container -> hypervisor/host
+      connected_to - device -> switch/AP (optionally with port)
+      powered_by   - device -> UPS/PDU/PoE switch (optionally with port)
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    source_id = db.Column(db.Integer, db.ForeignKey('device.id', ondelete='CASCADE'), nullable=False, index=True)
+    target_id = db.Column(db.Integer, db.ForeignKey('device.id', ondelete='CASCADE'), nullable=False, index=True)
+    link_type = db.Column(db.String(20), nullable=False, index=True)
+    port = db.Column(db.String(50))
+    notes = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('source_id', 'target_id', 'link_type', name='uq_device_link'),
+        db.CheckConstraint('source_id != target_id', name='ck_device_link_not_self'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'source_id': self.source_id,
+            'source_name': self.source.name if self.source else None,
+            'target_id': self.target_id,
+            'target_name': self.target.name if self.target else None,
+            'link_type': self.link_type,
+            'port': self.port,
+            'notes': self.notes,
         }

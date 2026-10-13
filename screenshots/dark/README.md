@@ -35,3 +35,7 @@ A quick gallery of the dark theme UI states.
   ![Live Prometheus Status](./device-status.png)
 - Prometheus Service Discovery
   ![Prometheus Service Discovery](./prometheus-sd.png)
+- Tags & Tag Filter
+  ![Tags & Tag Filter](./tags.png)
+- Relationships & Impact
+  ![Relationships & Impact](./relationships.png)

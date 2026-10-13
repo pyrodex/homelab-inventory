@@ -5,7 +5,8 @@ from flask import Blueprint, request, jsonify
 from sqlalchemy import or_, and_
 import logging
 
-from models import db, Device, Vendor, Model, Location
+from models import db, Device, Vendor, Model, Location, Tag
+from utils.tags import tag_filter_values, apply_tag_filter
 
 search_bp = Blueprint('search', __name__)
 
@@ -33,6 +34,11 @@ def advanced_search():
         monitoring_enabled = request.args.get('monitoring_enabled')
         poe_powered = request.args.get('poe_powered')
         has_ip = request.args.get('has_ip')
+        try:
+            tags = tag_filter_values(request.args)
+        except ValueError as exc:
+            return jsonify({'error': 'Validation error', 'details': {'tag': [str(exc)]}}), 400
+        query = apply_tag_filter(query, Device, tags)
         
         # Apply filters
         if device_type:
@@ -71,7 +77,8 @@ def advanced_search():
                 Device.serial_number.ilike(f'%{search_term}%'),
                 Device.networks.ilike(f'%{search_term}%'),
                 Device.interface_type.ilike(f'%{search_term}%'),
-                Device.poe_standards.ilike(f'%{search_term}%')
+                Device.poe_standards.ilike(f'%{search_term}%'),
+                Device.tags.any(Tag.name.ilike(f'%{search_term}%'))
             )
             query = query.filter(search_filter)
         
@@ -89,7 +96,8 @@ def advanced_search():
                 'location_id': location_id,
                 'monitoring_enabled': monitoring_enabled,
                 'poe_powered': poe_powered,
-                'has_ip': has_ip
+                'has_ip': has_ip,
+                'tags': tags
             }
         })
         
