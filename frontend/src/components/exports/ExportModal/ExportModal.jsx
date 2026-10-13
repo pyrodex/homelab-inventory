@@ -207,7 +207,7 @@ function ExportModal({ onClose }) {
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-gray-300">
                 Import the files <strong>in order</strong> in NetBox (each object list → <em>Import</em>), since later files
-                refer to objects created by earlier ones. Built against NetBox 4.7's import formats.
+                refer to objects created by earlier ones. Built against NetBox 4.7&apos;s import formats.
               </p>
               <div className="overflow-x-auto border border-gray-200 dark:border-gray-800 rounded-lg">
                 <table className="min-w-full text-sm">
