@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp, Info } from 'lucide-react';
-import { deviceApi, monitorApi, vendorApi, modelApi, locationApi } from '../../../services/api';
+import { deviceApi, monitorApi, vendorApi, modelApi, locationApi, tagApi, linkApi } from '../../../services/api';
+import { TagInput } from '../../common/Tags/Tags';
+import Relationships from '../Relationships/Relationships';
 import { 
   DEVICE_TYPES, 
   MONITOR_TYPES, 
@@ -23,6 +25,8 @@ const FIELD_LABELS = {
   poe_powered: 'PoE Powered',
   poe_standards: 'PoE Standards',
   monitoring_enabled: 'Monitoring Enabled',
+  tags: 'Tags',
+  link: 'Relationship',
 };
 
 const Section = ({ title, description, isOpen, onToggle, children }) => (
@@ -96,10 +100,22 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
   const [selectedPoeStandards, setSelectedPoeStandards] = useState(
     device?.poe_standards ? device.poe_standards.split(',') : []
   );
+  const [tags, setTags] = useState(device?.tags || []);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [allDevices, setAllDevices] = useState([]);
+  // Clones keep relationships (a cloned VM usually runs on the same host)
+  const [links, setLinks] = useState(() => (device?.links || []).map((l) => ({
+    id: device?.id ? l.id : null,
+    link_type: l.link_type,
+    target_id: l.target_id,
+    target_name: l.target_name,
+    port: l.port,
+  })));
   const [sectionOpen, setSectionOpen] = useState({
     basics: true,
     networking: true,
     monitors: true,
+    relationships: true,
     history: !!device?.id,
   });
 
@@ -128,7 +144,9 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
     try {
       await Promise.all([
         loadVendors(),
-        loadLocations()
+        loadLocations(),
+        tagApi.getAll().then((data) => setTagSuggestions(data.map((t) => t.name))).catch(() => {}),
+        deviceApi.getAll().then(setAllDevices).catch(() => {}),
       ]);
     } catch (err) {
       console.error('Failed to load initial data:', err);
@@ -239,6 +257,7 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
 
   const formatValue = (value) => {
     if (value === null || value === undefined || value === '') return 'Empty';
+    if (Array.isArray(value)) return value.length ? value.join(', ') : 'Empty';
     if (typeof value === 'boolean') return value ? 'Yes' : 'No';
     return value;
   };
@@ -301,7 +320,8 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
         poe_standards: selectedPoeStandards.join(','),
         vendor_id: formData.vendor_id || null, 
         model_id: formData.model_id || null, 
-        location_id: formData.location_id || null 
+        location_id: formData.location_id || null,
+        tags,
       };
       
       const isEdit = device && device.id;
@@ -335,8 +355,38 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
           await monitorApi.create(savedDevice.id, monitor);
         } 
       }
+
+      // Sync relationships. The device is already saved at this point, so
+      // collect failures (e.g. a loop) and report them instead of aborting.
+      const linkErrors = [];
+      const original = isEdit ? (device.links || []) : [];
+      const keptIds = new Set(links.filter((l) => l.id).map((l) => l.id));
+      for (const old of original) {
+        if (!keptIds.has(old.id)) {
+          await linkApi.delete(old.id).catch((e) => linkErrors.push(`remove ${old.target_name}: ${e.message}`));
+        }
+      }
+      for (const link of links) {
+        if (!link.id) {
+          await linkApi.create(savedDevice.id, {
+            target_id: link.target_id, link_type: link.link_type, port: link.port || null,
+          }).catch((e) => {
+            const detail = e.details ? Object.values(e.details).flat().join(' ') : e.message;
+            linkErrors.push(`${link.target_name}: ${detail}`);
+          });
+        } else {
+          const before = original.find((o) => o.id === link.id);
+          if (before && (before.port || null) !== (link.port || null)) {
+            await linkApi.update(link.id, { port: link.port || null })
+              .catch((e) => linkErrors.push(`update ${link.target_name}: ${e.message}`));
+          }
+        }
+      }
       
       onSave();
+      if (linkErrors.length) {
+        onError(`Device saved, but some relationships couldn't be saved:\n\n${linkErrors.join('\n')}`);
+      }
     } catch (err) { 
       console.error('Failed to save device:', err);
       onError(err.message || 'Failed to save device');
@@ -507,6 +557,13 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
                   required 
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+                  Tags <span className="font-normal text-gray-500 dark:text-gray-400">— Enter or comma to add</span>
+                </label>
+                <TagInput value={tags} onChange={setTags} suggestions={tagSuggestions} />
+              </div>
             </div>
           </Section>
 
@@ -670,6 +727,20 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
                 </button>
               </div>
             </div>
+          </Section>
+
+          <Section
+            title="Relationships"
+            description="What this device runs on, connects to, and draws power from."
+            isOpen={sectionOpen.relationships}
+            onToggle={() => toggleSection('relationships')}
+          >
+            <Relationships
+              deviceId={device?.id || null}
+              links={links}
+              onChange={setLinks}
+              devices={allDevices}
+            />
           </Section>
 
           {device?.id && (

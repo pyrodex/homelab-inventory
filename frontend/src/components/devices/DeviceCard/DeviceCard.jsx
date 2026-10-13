@@ -2,8 +2,17 @@ import React, { useState } from 'react';
 import { X, Check, Copy, Edit2, Trash2, MoreVertical } from 'lucide-react';
 import { DEVICE_TYPES } from '../../../constants/deviceTypes';
 import StatusBadge from '../StatusBadge/StatusBadge';
+import { TagChip } from '../../common/Tags/Tags';
 
-function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onClone, onDelete }) {
+function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onClone, onDelete, onTagClick, activeTags = [] }) {
+  const runsOn = (device.links || []).find((l) => l.link_type === 'runs_on');
+  const tagRow = (size) => (device.tags?.length ? (
+    <div className="flex flex-wrap gap-1 mt-2">
+      {device.tags.map((t) => (
+        <TagChip key={t} name={t} size={size} onClick={onTagClick} active={activeTags.includes(t)} />
+      ))}
+    </div>
+  ) : null);
   const deviceTypeLabel = DEVICE_TYPES.find(t => t.value === device.device_type)?.label || device.device_type;
   const deviceFunction = device.deviceFunction || '';
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -36,12 +45,14 @@ function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onCl
                 <span>{deviceTypeLabel}</span>
                 {device.ip_address && <span className="break-all">{device.ip_address}</span>}
                 {device.location_name && <span>📍 {device.location_name}</span>}
+                {runsOn && <span>on <span className="font-medium">{runsOn.target_name}</span></span>}
                 {device.monitors && device.monitors.length > 0 && (
                   <span className="text-blue-600">
                     {device.monitors.length} monitor{device.monitors.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
+              {tagRow('xs')}
             </div>
           </div>
           <div className="flex gap-2 md:ml-4 items-center">
@@ -148,6 +159,7 @@ function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onCl
             </span>
             <StatusBadge status={status} />
           </div>
+          {device.tags?.length > 0 && <div className="-mt-1 mb-3">{tagRow('sm')}</div>}
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
             <div>
@@ -188,6 +200,12 @@ function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onCl
               <div>
                 <p className="text-gray-600 dark:text-gray-300">Location</p>
                 <p className="font-medium text-gray-900 dark:text-gray-100">{device.location_name}</p>
+              </div>
+            )}
+            {runsOn && (
+              <div>
+                <p className="text-gray-600 dark:text-gray-300">Runs On</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">{runsOn.target_name}</p>
               </div>
             )}
             {device.interface_type && (

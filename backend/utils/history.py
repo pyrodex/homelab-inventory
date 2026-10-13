@@ -18,7 +18,8 @@ TRACKED_FIELDS = [
     'interface_type',
     'poe_powered',
     'poe_standards',
-    'monitoring_enabled'
+    'monitoring_enabled',
+    'tags',
 ]
 
 
@@ -38,6 +39,7 @@ def extract_device_state(device: Device) -> Dict[str, Any]:
         'poe_powered': device.poe_powered,
         'poe_standards': device.poe_standards,
         'monitoring_enabled': device.monitoring_enabled,
+        'tags': sorted(t.name for t in device.tags),
     }
 
 
@@ -53,6 +55,11 @@ def compute_diff(
     for field in TRACKED_FIELDS:
         old_value = old_state.get(field)
         new_value = new_state.get(field)
+        # Treat "no tags" the same whether recorded as [] or absent
+        if old_value == []:
+            old_value = None
+        if new_value == []:
+            new_value = None
         if old_value != new_value:
             diff[field] = {'old': old_value, 'new': new_value}
 

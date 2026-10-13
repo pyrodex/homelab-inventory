@@ -14,7 +14,8 @@ import IpamModal from './components/ipam/IpamModal';
 import PrometheusSdModal from './components/prometheus/PrometheusSdModal/PrometheusSdModal';
 
 // Services
-import { deviceApi, statsApi, prometheusApi } from './services/api';
+import { deviceApi, statsApi, prometheusApi, tagApi } from './services/api';
+import { TagChip } from './components/common/Tags/Tags';
 
 // Constants
 import { DEVICE_TYPES } from './constants/deviceTypes';
@@ -44,6 +45,8 @@ function App() {
   const [ipamRefreshKey, setIpamRefreshKey] = useState(0);
   const [promStatus, setPromStatus] = useState(null);
   const [showSdModal, setShowSdModal] = useState(false);
+  const [allTags, setAllTags] = useState([]);
+  const [activeTags, setActiveTags] = useState([]);
   const [showOtherActions, setShowOtherActions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('full');
@@ -143,6 +146,27 @@ function App() {
     }, 60000);
     return () => clearInterval(timer);
   }, []);
+
+  const fetchTags = async () => {
+    try {
+      setAllTags(await tagApi.getAll());
+    } catch (err) {
+      console.error('Failed to load tags:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTags();
+  }, []);
+
+  const toggleTagFilter = (tag) => {
+    setActiveTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  };
+
+  // Tag filter applies on top of type filter and search results (all tags must match)
+  const visibleDevices = activeTags.length
+    ? devices.filter((d) => activeTags.every((t) => d.tags?.includes(t)))
+    : devices;
 
   const promEnabled = !!promStatus?.enabled;
   const statusById = promStatus?.devices || {};
@@ -297,6 +321,7 @@ function App() {
     fetchAllDevices();
     setIpamRefreshKey((k) => k + 1);
     fetchPromStatus(true);
+    fetchTags();
     handleModalClose();
   };
 
@@ -630,6 +655,19 @@ function App() {
               </button>
             </div>
           </div>
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">Tags</span>
+              {allTags.map((t) => (
+                <TagChip key={t.id} name={t.name} onClick={toggleTagFilter} active={activeTags.includes(t.name)} />
+              ))}
+              {activeTags.length > 0 && (
+                <button onClick={() => setActiveTags([])} className="ml-1 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                  Clear ({activeTags.length})
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -660,7 +698,7 @@ function App() {
           </div>
         ) : (
           <DeviceList 
-            devices={devices} 
+            devices={visibleDevices} 
             searchTerm={searchResults ? '' : searchTerm} 
             viewMode={viewMode} 
             onToggleMonitoring={toggleMonitoring} 
@@ -671,7 +709,10 @@ function App() {
             onClearSearch={() => {
               setSearchTerm('');
               setSearchResults(null);
+              setActiveTags([]);
             }} 
+            onTagClick={toggleTagFilter}
+            activeTags={activeTags}
           />
         )}
       </main>
@@ -700,7 +741,7 @@ function App() {
       
       {showAdminModal && (
         <AdminModal 
-          onClose={() => setShowAdminModal(false)} 
+          onClose={() => { setShowAdminModal(false); fetchTags(); fetchDevices(); }} 
           onError={setError} 
         />
       )}

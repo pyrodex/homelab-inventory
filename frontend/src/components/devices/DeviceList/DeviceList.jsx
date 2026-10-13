@@ -12,7 +12,9 @@ function DeviceList({
   onClone, 
   onDelete, 
   onClearSearch,
-  statusById = {}
+  statusById = {},
+  onTagClick,
+  activeTags = []
 }) {
   const filteredDevices = devices.filter(device => {
     if (!searchTerm) return true;
@@ -33,7 +35,8 @@ function DeviceList({
       device.interface_type?.toLowerCase().includes(search) ||
       device.poe_standards?.toLowerCase().includes(search) ||
       deviceTypeLabel.toLowerCase().includes(search) ||
-      device.monitors?.some(m => m.monitor_type.toLowerCase().includes(search))
+      device.monitors?.some(m => m.monitor_type.toLowerCase().includes(search)) ||
+      device.tags?.some(t => t.includes(search))
     );
   });
 
@@ -64,6 +67,8 @@ function DeviceList({
           key={device.id} 
           device={device} 
           status={statusById[device.id]}
+          onTagClick={onTagClick}
+          activeTags={activeTags}
           viewMode={viewMode} 
           onToggleMonitoring={onToggleMonitoring} 
           onEdit={onEdit} 

@@ -8,6 +8,7 @@ from datetime import datetime
 
 from models import db, Device, DeviceHistory, Vendor, Model, Location
 from utils.history import extract_device_state, compute_diff
+from utils.tags import parse_tag_input, resolve_tags, tag_filter_values, apply_tag_filter
 from validators import DeviceSchema
 from exceptions import DatabaseError, ReadOnlyDatabaseError
 from utils.response import (
@@ -148,13 +149,17 @@ def get_all_history():
 
 @devices_bp.route('', methods=['GET'])
 def get_devices():
-    """Get all devices, optionally filtered by type"""
+    """Get all devices, optionally filtered by type and/or tag (?tag=a&tag=b = both)"""
     device_type = request.args.get('type')
+    try:
+        tags = tag_filter_values(request.args)
+    except ValueError as exc:
+        return validation_error_response({'tag': [str(exc)]})
+    query = Device.query
     if device_type:
-        devices = Device.query.filter_by(device_type=device_type).all()
-    else:
-        devices = Device.query.all()
-    return success_response([d.to_dict() for d in devices])
+        query = query.filter_by(device_type=device_type)
+    query = apply_tag_filter(query, Device, tags)
+    return success_response([d.to_dict() for d in query.all()])
 
 
 @devices_bp.route('/<int:device_id>', methods=['GET'])
@@ -191,6 +196,10 @@ def create_device():
                        'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
     
     filtered_data = {k: v for k, v in data.items() if k in creatable_fields}
+    try:
+        tag_names = parse_tag_input(data.get('tags'))
+    except ValueError as exc:
+        return validation_error_response({'tags': [str(exc)]})
     
     # Validate input
     schema = DeviceSchema()
@@ -215,6 +224,7 @@ def create_device():
         poe_standards=validated_data.get('poe_standards'),
         monitoring_enabled=validated_data.get('monitoring_enabled', True)
     )
+    device.tags = resolve_tags(tag_names)
     try:
         db.session.add(device)
         db.session.flush()  # ensure device.id for history
@@ -266,6 +276,12 @@ def update_device(device_id):
                        'interface_type', 'poe_powered', 'poe_standards', 'monitoring_enabled']
     
     filtered_data = {k: v for k, v in data.items() if k in updatable_fields}
+    tag_names = None
+    if 'tags' in data:
+        try:
+            tag_names = parse_tag_input(data.get('tags'))
+        except ValueError as exc:
+            return validation_error_response({'tags': [str(exc)]})
     
     # For partial updates, remove empty strings from required fields to avoid validation errors
     if isinstance(filtered_data, dict):
@@ -293,6 +309,8 @@ def update_device(device_id):
         device.poe_powered = validated_data['poe_powered']
     if 'monitoring_enabled' in validated_data:
         device.monitoring_enabled = validated_data['monitoring_enabled']
+    if tag_names is not None:
+        device.tags = resolve_tags(tag_names)
     
     device.updated_at = datetime.utcnow()
     

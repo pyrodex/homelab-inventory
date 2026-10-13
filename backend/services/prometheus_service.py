@@ -89,7 +89,10 @@ def build_target_labels(device, monitor):
         'poe_powered': 'true' if device.poe_powered else 'false',
         'poe_standards': device.poe_standards or '',
         'monitor_type': monitor.monitor_type,
-        'monitor_endpoint': monitor.endpoint or ''
+        'monitor_endpoint': monitor.endpoint or '',
+        # ",a,b," so `tags=~".*,prod,.*"` matches one tag exactly (Consul-style)
+        'tags': f",{','.join(t.name for t in device.tags)}," if device.tags else '',
+        'runs_on': next((l.target.name for l in device.outgoing_links if l.link_type == 'runs_on'), ''),
     }
 
 
