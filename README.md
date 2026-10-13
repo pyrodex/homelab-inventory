@@ -1,11 +1,14 @@
 # Homelab Inventory
 
-A modern, web-based inventory management system for homelab infrastructure with integrated Prometheus monitoring configuration export. Built with React and Flask, this application helps you track, organize, and monitor all your homelab devices in one place.
+A modern, web-based inventory for homelab infrastructure: track devices and how they depend on each other, feed Prometheus directly, see which IPs are really free, and push your inventory into Ansible, NetBox, or anything that takes a webhook. Built with React and Flask.
 
+![Release](https://img.shields.io/github/v/release/pyrodex/homelab-inventory)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13-blue.svg)
 ![React](https://img.shields.io/badge/react-18.2-blue.svg)
-![Flask](https://img.shields.io/badge/flask-3.0-green.svg)
+![Flask](https://img.shields.io/badge/flask-3.1-green.svg)
+
+> **New in 2.0:** IPAM with ping sweeps and DHCP leases, Prometheus HTTP service discovery and live device status, tags and relationships with impact analysis, Ansible and NetBox exports, and webhooks. Upgrading from 1.x? See [Upgrading to 2.0](#upgrading-to-20). Full list in the [changelog](CHANGELOG.md).
 
 ## ✨ Features
 
@@ -18,6 +21,8 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **Device History & Change Tracking**: Automatic audit log for device create/update/delete and bulk import/delete, with per-device history endpoint and UI timeline plus a global history view (paginated 50/100/250/500/all) under Other Actions
 
 ### Monitoring Integration
+- **HTTP Service Discovery**: Prometheus pulls targets straight from the app via `http_sd_configs`; changes apply on its next refresh, with a generated `scrape_configs` snippet
+- **Live Device Status**: Up / Down / Degraded / Not scraped on every device, read from your Prometheus (`probe_success` and `up`)
 - **Prometheus Export**: Automatically generate Prometheus target configurations from your inventory
 - **Multiple Monitor Types**: Support for Node Exporter, smartctl_exporter, SNMP, ICMP, HTTP/HTTPS, DNS, IPMI, NUT, and Docker monitoring
 - **Flexible Monitoring**: Enable or disable monitoring per device, with support for multiple monitors per device
@@ -26,7 +31,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 
 ### Discovery
 - **Network Discovery**: Probe single IPs/hostnames, dashed IP ranges, or CIDR blocks
-- **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames
+- **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames, probed in parallel
 - **Inline Add**: Add discovered devices one-by-one without leaving the results list
 
 ### Tags & Relationships
@@ -112,7 +117,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - Mobile-optimized with iOS-specific enhancements
 
 **Backend:**
-- Flask 3.0 RESTful API with modular blueprint architecture
+- Flask 3.1 RESTful API with modular blueprint architecture
 - SQLAlchemy ORM for database operations
 - Flask-Migrate/Alembic for database schema versioning (auto-migrate on startup enabled by default, can disable via `AUTO_MIGRATE=false`)
 - SQLite database (lightweight, file-based) with optimized indexes
@@ -121,6 +126,7 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - Marshmallow for input validation and sanitization
 - iputils-ping for ICMP discovery (bundled in backend image) with Python ping3 fallback
 - PyYAML for Prometheus configuration generation
+- Background workers (in-process) for scheduled IPAM ping sweeps, dnsmasq lease-file watching, and webhook delivery
 - psutil for system metrics (optional)
 - pytest for testing framework
 - Automated database backup system
@@ -138,7 +144,10 @@ A modern, web-based inventory management system for homelab infrastructure with 
 ```
 homelab-inventory/
 ├── backend/                 # Flask API, migrations, services, scripts, tests
+│   └── scripts/ansible_inventory.py  # Ansible dynamic inventory script (also served by the API)
 ├── frontend/                # React UI + nginx reverse proxy for /api
+├── contrib/ansible/         # Ansible inventory docs: groups and host variables
+├── CHANGELOG.md             # Release notes
 ├── docker-compose.yaml      # Default stack (frontend, backend, sqlite-web)
 ├── docker-compose.yaml.example
 ├── BACKUP_README.md         # Standalone backup guide
@@ -755,13 +764,13 @@ curl -X POST http://localhost:5000/api/devices \
 ### Code Structure
 
 - **Backend**: Modular Flask architecture with blueprints, services, and models separation
-  - Routes organized by domain (devices, monitors, admin, bulk, search, health)
-  - Business logic in services layer
+  - Routes organized by domain (devices, monitors, admin, bulk, search, health, discovery, subnets, links, prometheus, exports, webhooks)
+  - Business logic in services layer (IPAM analysis, ping sweeps, DHCP leases, Prometheus SD and status, exports, webhooks)
   - Database models in separate module
   - Input validation via Marshmallow schemas
   - Custom exception handling
 - **Frontend**: Component-based React architecture with service layer for API calls
-  - Components organized by feature (devices, admin, bulk, search, common)
+  - Components organized by feature (devices, admin, bulk, search, discovery, ipam, prometheus, exports, history, common)
   - Centralized API service layer
   - Utility functions for common operations
 - **Styling**: Tailwind CSS utility classes with custom CSS for iOS optimizations
@@ -790,13 +799,13 @@ docker compose build --no-cache
 **Building and Publishing via CI/CD:**
 Images are automatically built and published when you:
 - Push to the `main` branch
-- Create a git tag (e.g., `git tag v1.0.0 && git push --tags`)
+- Create a git tag (e.g., `git tag v2.0.0 && git push --tags`)
 
 See the [CI/CD Pipeline](#-cicd-pipeline) section for more details.
 
 ### Testing
 
-The project includes a basic test structure using pytest:
+The backend has a pytest suite (100+ tests):
 
 **Backend Tests:**
 ```bash
@@ -804,9 +813,18 @@ cd backend
 pytest
 ```
 
+`tests/conftest.py` points the app at a throwaway SQLite file before it's imported, so running the suite never touches your real `DATABASE_PATH`. Webhooks deliver inline during tests.
+
 **Test Structure:**
 - `tests/test_models.py` - Unit tests for database models
-- `tests/test_api.py` - Integration tests for API endpoints
+- `tests/test_api.py` - Integration tests for core API endpoints
+- `tests/test_subnets.py` - IPAM subnets, utilization, free ranges
+- `tests/test_ipam_discovery.py` - Ping sweeps, dnsmasq lease import, observation-aware IPAM
+- `tests/test_prometheus.py` - HTTP service discovery, scrape-config generation, live status
+- `tests/test_tags_links.py` - Tags, relationships, impact analysis
+- `tests/test_exports.py` - Ansible inventory and NetBox CSV
+- `tests/test_webhooks.py` - Webhooks against a real local HTTP receiver
+- `tests/test_migrations.py` - Boots the app in production mode on an empty database
 
 **Adding Tests:**
 - Follow pytest conventions
@@ -879,6 +897,24 @@ The Docker Compose configuration includes health checks for both services:
    ```bash
    docker compose pull && docker compose up -d
    ```
+
+Database migrations run automatically on startup (unless `AUTO_MIGRATE=false`). To stay on a major version, pin the image tag, e.g. `ghcr.io/pyrodex/homelab-inventory/backend:2`.
+
+### Upgrading to 2.0
+
+2.0 is a drop-in upgrade: no API endpoints were removed and no configuration is required. A few things are worth knowing:
+
+1. **Back up first.** Four schema migrations run on first start (subnets, tags/links, IPAM observations, webhooks). They're additive, but take a backup: `docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py`.
+2. **New Prometheus target labels.** Exported and discovered targets now carry `inventory_device_id` (always), plus `tags` and `runs_on` when set. New labels mean Prometheus starts **new time series** for those targets: graphs keyed on the full label set show a break at the upgrade, and alerts that match on exact label sets may need a look. If you'd rather not, drop them in the job's `relabel_configs` with `action: labeldrop` and `regex: inventory_device_id|tags|runs_on`.
+3. **Devices without an IP** are now skipped in Prometheus exports (they previously caused the export to fail).
+4. **Discovery is faster.** Probes run in parallel, and the ping timeout is now passed in the right unit on Linux, so unreachable hosts fail in about a second instead of hanging until the subprocess timeout.
+5. **Optional new features**, all off or empty until you configure them:
+   - `PROMETHEUS_URL` for live status
+   - `PROMETHEUS_SD_TOKEN` to protect service discovery
+   - `DNSMASQ_LEASES_PATH` / `IPAM_LEASES_TOKEN` for DHCP leases
+   - ping sweeps, toggled per subnet in the UI
+   - webhooks, configured under Admin
+6. **Background workers.** The backend now runs a sweep scheduler and lease watcher. Set `IPAM_BACKGROUND_WORKERS=false` to disable them.
 
 > **Note:** New images are automatically built and pushed to GitHub Container Registry via GitHub Actions when code is pushed to the `main` branch or when tags are created. See [CI/CD Pipeline](#-cicd-pipeline) section below.
 
@@ -1149,11 +1185,16 @@ Ensure volumes are properly mounted:
   - Database errors are logged but don't expose sensitive information
   - Rate limit errors return 429
 
+- **Optional Tokens for Machine Endpoints**: `PROMETHEUS_SD_TOKEN` (service discovery) and `IPAM_LEASES_TOKEN` (lease uploads) require a bearer token, checked in constant time
+
+- **Webhook Hardening**: HMAC-SHA256 signatures (`X-Hub-Signature-256`), secrets never returned by the API and shown once on creation, redirects not followed, and credentials in URLs rejected
+
 ### Security Recommendations
 
 - **Database**: SQLite database should be stored in a secure location with proper file permissions
 - **Network**: Use a reverse proxy (nginx, Traefik) with SSL/TLS for production
-- **Authentication**: Consider adding authentication for production use (not currently implemented)
+- **Authentication**: The app has no built-in authentication yet. Put it behind your reverse proxy's auth (e.g. Authelia, Authentik), especially since webhooks and service discovery let the app reach other hosts on your network
+- **sqlite-web**: The example compose file publishes `sqlite-web` on port 5001 with no authentication; remove it or bind it to `127.0.0.1` if you don't need it
 - **Rate Limiting Storage**: For production or multi-instance deployments, configure `RATELIMIT_STORAGE_URL` to Redis/Memcached instead of the in-memory default
 - **Secrets Management**: Use environment variables or secrets manager for sensitive configuration
 
@@ -1255,14 +1296,21 @@ This project is licensed under the GNU General Public License v3.0 - see the [LI
 - [x] Environment variable validation
 - [x] Device history and change tracking (audit log + API + UI)
 - [x] Dark mode theme with system auto option
+- [x] IPAM: CIDR subnets, free-address grid, next free IP, reserved ranges (2.0)
+- [x] Scheduled ping sweeps and dnsmasq DHCP lease import (2.0)
+- [x] Prometheus HTTP service discovery and live device status (2.0)
+- [x] Tags, device relationships, and impact analysis (2.0)
+- [x] Ansible dynamic inventory and NetBox CSV export (2.0)
+- [x] Signed webhooks for device and IPAM events (2.0)
 
 ### Future Enhancements
 
 - [ ] User authentication and authorization
 - [ ] Multi-user support with role-based access
+- [ ] URL routing (deep links to devices and subnets)
+- [ ] Sortable table view for large inventories
 - [ ] Device templates and presets
 - [ ] Integration with other monitoring systems (Grafana, etc.)
-- [ ] Scheduled/recurring discovery runs with notifications
 - [ ] Internationalization (i18n) support
 - [ ] Caching layer (Redis) for improved performance
 - [ ] API documentation (OpenAPI/Swagger)
