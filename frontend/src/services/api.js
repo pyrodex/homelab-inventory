@@ -317,3 +317,23 @@ export const linkApi = {
     `/devices/${deviceId}/impact${types ? `?types=${encodeURIComponent(types.join(','))}` : ''}`
   ),
 };
+
+// Export API calls (Ansible inventory, NetBox CSV)
+const exportQuery = ({ tags = [], monitoringOnly = false, includeAllTypes = false, defaultSite } = {}) => {
+  const params = new URLSearchParams();
+  tags.forEach((t) => params.append('tag', t));
+  if (monitoringOnly) params.append('monitoring_enabled', 'true');
+  if (includeAllTypes) params.append('include_all_types', 'true');
+  if (defaultSite) params.append('default_site', defaultSite);
+  return params.toString();
+};
+
+export const exportApi = {
+  query: exportQuery,
+  ansible: (filters) => apiRequest(`/export/ansible?${exportQuery(filters)}`),
+  ansibleYamlUrl: (filters) => `${API_URL}/export/ansible?format=yaml&${exportQuery(filters)}`,
+  ansibleScriptUrl: () => `${API_URL}/export/ansible/script`,
+  netboxSummary: (filters) => apiRequest(`/export/netbox?summary=true&${exportQuery(filters)}`),
+  netboxZipUrl: (filters) => `${API_URL}/export/netbox?${exportQuery(filters)}`,
+  netboxFileUrl: (key, filters) => `${API_URL}/export/netbox?file=${encodeURIComponent(key)}&${exportQuery(filters)}`,
+};
