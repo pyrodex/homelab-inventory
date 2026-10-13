@@ -258,3 +258,25 @@ export const healthApi = {
   check: () => apiRequest('/health'),
   detailed: () => apiRequest('/health/detailed'),
 };
+
+// Subnet / IPAM API calls
+export const subnetApi = {
+  getAll: () => apiRequest('/subnets'),
+  getById: (id) => apiRequest(`/subnets/${id}`),
+  getUnassigned: () => apiRequest('/subnets/unassigned'),
+  nextFree: (id, count = 1) => apiRequest(`/subnets/${id}/next-free?count=${encodeURIComponent(count)}`),
+
+  create: (subnetData) => apiRequest('/subnets', {
+    method: 'POST',
+    body: JSON.stringify(subnetData),
+  }),
+
+  update: (id, subnetData) => apiRequest(`/subnets/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(subnetData),
+  }),
+
+  delete: (id) => apiRequest(`/subnets/${id}`, {
+    method: 'DELETE',
+  }),
+};

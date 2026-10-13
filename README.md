@@ -29,6 +29,14 @@ A modern, web-based inventory management system for homelab infrastructure with 
 - **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames
 - **Inline Add**: Add discovered devices one-by-one without leaving the results list
 
+### IPAM / Subnets
+- **CIDR Subnets**: Define IPv4/IPv6 subnets with name, VLAN, gateway, location, and description
+- **Free Address View**: Color-coded address grid shows monitored, unmonitored, reserved, gateway, and free IPs
+- **Next Free IP**: One click to copy the next available address or add a device with it prefilled
+- **Reserved Ranges**: Exclude DHCP pools, VIPs, or future-use blocks from the free pool
+- **Monitor-aware**: IPs referenced by monitor endpoints (e.g. `http://10.0.0.5/admin`) count as in use
+- **Hygiene Checks**: Flags duplicate IP assignments and devices whose IP isn't inside any defined subnet
+
 ### User Interface
 - **Modern React UI**: Responsive interface built with React and Tailwind CSS
 - **Dark Mode with Auto Theme**: Light/dark themes with system-preference auto mode; all dialogs (Admin, Bulk Ops, Advanced Search, Device modals) are theme aware
@@ -341,6 +349,19 @@ scrape_configs:
 3. Run discovery to see ICMP reachability (with RTT) and reverse DNS results.
 4. Click **Add Device** on any row to prefill and save a device while staying on the discovery results.
 
+### Finding Free IPs (IPAM)
+
+1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **IPAM / Subnets**.
+2. Click **Add subnet** and enter a CIDR (e.g., `192.168.10.0/24`). Optionally set a gateway, VLAN, location, and reserved ranges such as a DHCP pool (`192.168.10.100-199`).
+3. Select a subnet to see utilization. Usage is computed live from device IPs and monitor endpoints, so there's nothing to keep in sync:
+   - **Green** – inventoried and monitored
+   - **Amber** – inventoried, but monitoring is off (still taken)
+   - **Striped** – reserved; **Blue** – gateway; **White** – free
+4. Click any free address (or **Next free**) to copy it or **Add device** with the IP and location prefilled.
+5. **Outside any subnet** lists devices whose IP isn't covered by a defined subnet.
+
+Subnets larger than 4,096 addresses skip the grid and show compressed free ranges instead. Devices addressed by hostname aren't counted, since their IP isn't known.
+
 ### Managing Vendors, Models, and Locations
 
 1. Click the **"Admin"** button in the header
@@ -497,6 +518,15 @@ All API endpoints are prefixed with `/api`
 - `POST /api/discovery` - Probe IPs/hostnames/ranges/CIDRs with ICMP + reverse DNS
   - Body supports `targets` (array or comma/newline string), `range` (`192.168.1.10-192.168.1.20`), and `cidr` (`192.168.1.0/28`)
   - Returns reachability summary, RTT (ms), resolved IP, and PTR hostname when available
+
+#### Subnets (IPAM)
+- `GET /api/subnets` - List subnets with utilization summaries
+- `POST /api/subnets` - Create a subnet (`cidr` required; `name`, `vlan_id`, `gateway`, `reserved_ranges`, `location_id`, `description` optional)
+- `GET /api/subnets/:id` - Utilization detail: summary, used addresses, free ranges, conflicts, and per-address status (≤ 4,096 addresses)
+- `PUT /api/subnets/:id` - Update a subnet
+- `DELETE /api/subnets/:id` - Delete a subnet (devices are untouched)
+- `GET /api/subnets/:id/next-free?count=N` - Next N free addresses (max 256)
+- `GET /api/subnets/unassigned` - Devices whose IP isn't inside any defined subnet
 
 ### API Response Format
 

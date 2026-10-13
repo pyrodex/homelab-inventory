@@ -180,3 +180,36 @@ class DeviceHistory(db.Model):
             'created_at': self.created_at.isoformat()
         }
 
+
+
+class Subnet(db.Model):
+    """An IP subnet tracked for IPAM-style address utilization"""
+    id = db.Column(db.Integer, primary_key=True)
+    cidr = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    name = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    vlan_id = db.Column(db.Integer)
+    gateway = db.Column(db.String(64))
+    # Comma/newline separated IPs, ranges (a-b) or CIDRs that should not be handed out
+    # (e.g. DHCP pools, VIPs, future use)
+    reserved_ranges = db.Column(db.Text)
+    location_id = db.Column(db.Integer, db.ForeignKey('location.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    location = db.relationship('Location', backref=db.backref('subnets', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'cidr': self.cidr,
+            'name': self.name,
+            'description': self.description,
+            'vlan_id': self.vlan_id,
+            'gateway': self.gateway,
+            'reserved_ranges': self.reserved_ranges,
+            'location_id': self.location_id,
+            'location_name': self.location.name if self.location else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
