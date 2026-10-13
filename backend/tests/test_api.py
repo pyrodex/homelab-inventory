@@ -68,7 +68,9 @@ def test_get_devices(client, sample_data):
     """Test getting all devices"""
     response = client.get('/api/devices')
     assert response.status_code == 200
-    data = json.loads(response.data)
+    body = json.loads(response.data)
+    assert body['success'] is True
+    data = body['data']
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]['name'] == "Test Device"
@@ -79,7 +81,7 @@ def test_get_device(client, sample_data):
     device_id = sample_data['device_id']
     response = client.get(f'/api/devices/{device_id}')
     assert response.status_code == 200
-    data = json.loads(response.data)
+    data = json.loads(response.data)['data']
     assert data['name'] == "Test Device"
     assert data['ip_address'] == "192.168.1.1"
 
@@ -102,7 +104,7 @@ def test_create_device(client, sample_data):
         content_type='application/json'
     )
     assert response.status_code == 201
-    data = json.loads(response.data)
+    data = json.loads(response.data)['data']
     assert data['name'] == 'New Device'
 
 
