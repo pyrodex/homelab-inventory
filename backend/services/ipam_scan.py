@@ -96,6 +96,7 @@ def scan_subnet(subnet_id: int, timeout: float = netprobe.DEFAULT_TIMEOUT, _clai
         now = datetime.utcnow()
         rows = {o.ip: o for o in IpObservation.query.filter(IpObservation.ip.in_(ips)).all()}
         alive = 0
+        new_ips = []
         for ip, res in results.items():
             row = rows.get(ip)
             if row is None:
@@ -103,6 +104,7 @@ def scan_subnet(subnet_id: int, timeout: float = netprobe.DEFAULT_TIMEOUT, _clai
                     continue  # don't create rows for silence
                 row = IpObservation(ip=ip)
                 db.session.add(row)
+                new_ips.append(ip)
             row.ping_last_checked = now
             row.ping_reachable = bool(res['reachable'])
             if res['reachable']:
@@ -118,6 +120,11 @@ def scan_subnet(subnet_id: int, timeout: float = netprobe.DEFAULT_TIMEOUT, _clai
         subnet.last_scan_duration_ms = int((time.monotonic() - started) * 1000)
         subnet.last_scan_error = None
         db.session.commit()
+        try:
+            from services.webhooks import emit_discovered
+            emit_discovered(new_ips, 'ping_sweep')
+        except Exception as exc:  # never let notifications break a sweep
+            logger.warning(f"Webhook emit after sweep failed: {exc}")
         logger.info(f"Swept {subnet.cidr}: {alive}/{len(ips)} alive in {subnet.last_scan_duration_ms} ms")
         return {'status': 'ok', 'scanned': len(ips), 'alive': alive,
                 'duration_ms': subnet.last_scan_duration_ms}
