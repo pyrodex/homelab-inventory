@@ -58,6 +58,8 @@ def test_fresh_install_boots_in_production(tmp_path):
     assert conn.execute('select version_num from alembic_version').fetchone()[0] == _head()
     subnet_cols = {r[1] for r in conn.execute('pragma table_info(subnet)')}
     assert {'scan_enabled', 'scan_interval_minutes', 'last_scan_at'} <= subnet_cols
+    obs_cols = {r[1] for r in conn.execute('pragma table_info(ip_observation)')}
+    assert {'ptr_hostname', 'ptr_checked_at'} <= obs_cols
 
 
 def test_reboot_is_idempotent(tmp_path):

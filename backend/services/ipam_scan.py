@@ -32,6 +32,11 @@ def max_scan_hosts() -> int:
         return 1024
 
 
+def sweep_ptr_enabled() -> bool:
+    """Look up reverse DNS for every swept address (IPAM_SWEEP_PTR, default on)."""
+    return os.environ.get('IPAM_SWEEP_PTR', 'true').lower() not in ('false', '0', 'no', 'off')
+
+
 def stale_after() -> timedelta:
     """How long a ping-seen address stays 'in use' after it was last seen."""
     try:
@@ -92,28 +97,45 @@ def scan_subnet(subnet_id: int, timeout: float = netprobe.DEFAULT_TIMEOUT, _clai
             return {'status': 'ineligible', 'error': reason}
 
         ips = _hosts(subnet.cidr)
-        results = netprobe.sweep(ips, timeout=timeout)
+        ptr_all = sweep_ptr_enabled()
+        results = netprobe.sweep(ips, timeout=timeout, resolve='all' if ptr_all else 'alive')
         now = datetime.utcnow()
         rows = {o.ip: o for o in IpObservation.query.filter(IpObservation.ip.in_(ips)).all()}
-        alive = 0
-        new_ips = []
+        # Inventoried addresses always get a row, so "no PTR" can be reported for them
+        from models import Device
+        from services.ipam import build_address_index
+        inventoried = {str(ipaddress.ip_address(i)) for i in build_address_index(Device.query.all()).get(4, {})}
+        alive = ptr_found = 0
+        new_alive_ips = []
         for ip, res in results.items():
+            has_ptr = res['ptr_status'] == netprobe.PTR_FOUND
             row = rows.get(ip)
             if row is None:
-                if not res['reachable']:
-                    continue  # don't create rows for silence
+                if not (res['reachable'] or has_ptr or (ptr_all and ip in inventoried)):
+                    continue  # don't create rows for silence with no DNS name
                 row = IpObservation(ip=ip)
                 db.session.add(row)
-                new_ips.append(ip)
+                if res['reachable']:
+                    new_alive_ips.append(ip)
+            elif res['reachable'] and not row.ping_last_seen and not row.dhcp_active:
+                new_alive_ips.append(ip)  # known only from DNS until now
             row.ping_last_checked = now
             row.ping_reachable = bool(res['reachable'])
             if res['reachable']:
                 alive += 1
                 row.ping_last_seen = now
                 row.ping_rtt_ms = res['rtt_ms']
-                if res['hostname']:
-                    row.ping_hostname = res['hostname'][:255]
-                    row.hostname = row.hostname or row.ping_hostname
+
+            # Reverse DNS: a definite answer updates the record; a resolver
+            # error leaves what we knew in place rather than wiping it.
+            if res['ptr_status'] in (netprobe.PTR_FOUND, netprobe.PTR_NONE):
+                row.ptr_checked_at = now
+                row.ptr_hostname = res['hostname'][:255] if has_ptr else None
+                if has_ptr:
+                    ptr_found += 1
+                    if res['reachable']:
+                        row.ping_hostname = row.ptr_hostname
+                    row.hostname = row.hostname or row.ptr_hostname
 
         subnet.last_scan_at = now
         subnet.last_scan_alive = alive
@@ -122,11 +144,11 @@ def scan_subnet(subnet_id: int, timeout: float = netprobe.DEFAULT_TIMEOUT, _clai
         db.session.commit()
         try:
             from services.webhooks import emit_discovered
-            emit_discovered(new_ips, 'ping_sweep')
+            emit_discovered(new_alive_ips, 'ping_sweep')
         except Exception as exc:  # never let notifications break a sweep
             logger.warning(f"Webhook emit after sweep failed: {exc}")
         logger.info(f"Swept {subnet.cidr}: {alive}/{len(ips)} alive in {subnet.last_scan_duration_ms} ms")
-        return {'status': 'ok', 'scanned': len(ips), 'alive': alive,
+        return {'status': 'ok', 'scanned': len(ips), 'alive': alive, 'ptr_found': ptr_found,
                 'duration_ms': subnet.last_scan_duration_ms}
     except Exception as exc:
         db.session.rollback()

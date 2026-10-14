@@ -3,6 +3,23 @@
 All notable changes to Homelab Inventory. Versions follow [Semantic Versioning](https://semver.org/).
 Releases before 2.0 are listed on the [GitHub releases page](https://github.com/pyrodex/homelab-inventory/releases).
 
+## [Unreleased]
+
+### Added
+- **Reverse DNS in IPAM.** Ping sweeps look up the PTR record for every address, not just ones that answer.
+  - Addresses whose only evidence is a PTR record get a new **rose** "Reverse DNS only" state. By default they're kept
+    out of free and next-free; set `IPAM_PTR_BLOCKS_FREE=false` to allow them.
+  - Any address with a PTR record gets a corner marker in the grid.
+  - PTR names show in tooltips, address details and the **In use** list, which flags inventoried devices with **no PTR**.
+  - New summary counts: `dns_only` and `with_ptr`.
+- `IPAM_SWEEP_PTR` (default on) to limit PTR lookups to addresses that answer.
+
+### Changed
+- PTR lookups now separate "no record" from resolver errors, so a DNS outage during a sweep never erases names already
+  recorded.
+- `ipam.address_discovered` still fires only for addresses seen on the network. A PTR record alone doesn't count; an
+  address known only from DNS fires when it first answers.
+
 ## [2.0.0] - 2026-10-13
 
 The inventory now understands your network, not just your device list: which IPs are really free, what depends on what,
@@ -68,4 +85,5 @@ Upgrading from 1.x is drop-in (migrations run automatically), but read
 - The new target labels start new Prometheus time series for exported targets; see the README for how to drop them.
 - The app still has no built-in authentication; keep it behind your reverse proxy's auth.
 
+[Unreleased]: https://github.com/pyrodex/homelab-inventory/compare/v2.0.0...HEAD
 [2.0.0]: https://github.com/pyrodex/homelab-inventory/compare/v1.7.3...v2.0.0

@@ -81,27 +81,56 @@ def ping(target: str, timeout: float = DEFAULT_TIMEOUT) -> Tuple[bool, Optional[
     return reachable, rtt, error
 
 
-def reverse_dns(ip: str) -> Optional[str]:
+PTR_FOUND = 'found'
+PTR_NONE = 'none'      # resolver answered: no PTR record
+PTR_ERROR = 'error'    # resolver failed / timed out: result unknown
+
+
+def reverse_lookup(ip: str) -> Tuple[Optional[str], str]:
+    """
+    PTR lookup that distinguishes "no record" from "couldn't ask".
+    Returns (hostname | None, PTR_FOUND | PTR_NONE | PTR_ERROR).
+    """
     try:
-        return socket.gethostbyaddr(ip)[0]
-    except Exception:
-        return None
+        name = socket.gethostbyaddr(ip)[0]
+        return (name, PTR_FOUND) if name else (None, PTR_NONE)
+    except socket.herror as exc:
+        # h_errno 1 = HOST_NOT_FOUND (authoritative no), 4 = NO_DATA; 2 = TRY_AGAIN
+        return (None, PTR_NONE) if exc.errno in (1, 4) else (None, PTR_ERROR)
+    except (socket.gaierror, OSError):
+        return None, PTR_ERROR
+
+
+def reverse_dns(ip: str) -> Optional[str]:
+    return reverse_lookup(ip)[0]
 
 
 def sweep(ips: Iterable[str], timeout: float = DEFAULT_TIMEOUT, workers: int = DEFAULT_WORKERS,
-          resolve: bool = True) -> Dict[str, dict]:
+          resolve: str = 'alive') -> Dict[str, dict]:
     """
-    Ping many addresses concurrently. Returns {ip: {reachable, rtt_ms, hostname, error}}.
-    Reverse DNS only runs for addresses that answered.
+    Ping many addresses concurrently.
+    Returns {ip: {reachable, rtt_ms, hostname, ptr_status, error}}.
+
+    resolve:
+      'alive' - PTR lookup only for addresses that answered (default)
+      'all'   - PTR lookup for every address, so DNS-only entries show up
+      'none'  - no lookups (ptr_status is None)
     """
     ips = list(ips)
     if not ips:
         return {}
+    if resolve is True:  # backwards compatibility with the old boolean flag
+        resolve = 'alive'
+    elif resolve is False:
+        resolve = 'none'
 
     def probe(ip):
         reachable, rtt, error = ping(ip, timeout)
-        hostname = reverse_dns(ip) if (reachable and resolve) else None
-        return ip, {'reachable': reachable, 'rtt_ms': rtt, 'hostname': hostname, 'error': error}
+        hostname, ptr_status = None, None
+        if resolve == 'all' or (resolve == 'alive' and reachable):
+            hostname, ptr_status = reverse_lookup(ip)
+        return ip, {'reachable': reachable, 'rtt_ms': rtt, 'hostname': hostname,
+                    'ptr_status': ptr_status, 'error': error}
 
     with ThreadPoolExecutor(max_workers=max(1, min(workers, len(ips)))) as pool:
         return dict(pool.map(probe, ips))

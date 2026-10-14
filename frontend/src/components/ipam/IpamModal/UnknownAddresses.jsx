@@ -11,7 +11,7 @@ function UnknownAddresses({ items = [], onAdd, onSelect }) {
   return (
     <section>
       <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-        On the network, not in inventory ({items.length})
+        Not in inventory ({items.length})
       </h4>
       <div className="overflow-x-auto border border-violet-200 dark:border-violet-900 rounded-lg">
         <table className="min-w-full text-sm">
@@ -29,6 +29,7 @@ function UnknownAddresses({ items = [], onAdd, onSelect }) {
               const evidence = [
                 u.dhcp && (u.dhcp_expires ? `DHCP lease (until ${new Date(u.dhcp_expires).toLocaleString()})` : 'DHCP lease (no expiry)'),
                 u.seen && `answered ping ${timeAgo(u.last_seen)}${u.reachable_now ? '' : ', not on last sweep'}`,
+                u.status === 'dns' ? 'reverse DNS record only' : u.ptr && 'has PTR',
               ].filter(Boolean).join(' · ');
               return (
                 <tr key={u.ip} className="hover:bg-gray-50 dark:hover:bg-gray-800/60">
