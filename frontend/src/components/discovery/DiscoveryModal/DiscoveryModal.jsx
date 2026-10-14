@@ -94,8 +94,8 @@ function DiscoveryModal({ onClose, onAddDevice, onEditDevice, existingDevices = 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-40">
-      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-5xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[92vh] overflow-hidden flex flex-col transition-colors">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 md:p-4 z-40">
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-5xl w-full h-full md:h-auto max-h-screen md:max-h-[92vh] overflow-hidden flex flex-col transition-colors">
         <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
@@ -159,7 +159,7 @@ function DiscoveryModal({ onClose, onAddDevice, onEditDevice, existingDevices = 
                 </div>
               </div>
               <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300">
-                <Info size={14} className="mt-0.5 flex-shrink-0" />
+                <Info size={14} className="mt-0.5 shrink-0" />
                 <div>
                   ICMP is used for reachability. Reverse DNS runs against responsive IPs to
                   prefill hostnames when available. Discovery is limited to 256 targets per run.
@@ -245,7 +245,7 @@ function DiscoveryModal({ onClose, onAddDevice, onEditDevice, existingDevices = 
                   return (
                     <div
                       key={`${result.input}-${idx}`}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-3"
                     >
                       <div className="flex items-start gap-3 flex-1">
                         <div

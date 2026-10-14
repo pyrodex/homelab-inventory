@@ -73,10 +73,10 @@ function App() {
 
   const themeLabel = theme === 'system' ? 'Auto' : theme === 'dark' ? 'Dark' : 'Light';
   const themeIcon = theme === 'system'
-    ? <Monitor size={20} className="flex-shrink-0" />
+    ? <Monitor size={20} className="shrink-0" />
     : resolvedTheme === 'dark'
-      ? <Moon size={20} className="flex-shrink-0" />
-      : <Sun size={20} className="flex-shrink-0" />;
+      ? <Moon size={20} className="shrink-0" />
+      : <Sun size={20} className="shrink-0" />;
 
   // Load data on mount and when filter changes
   useEffect(() => {
@@ -353,14 +353,14 @@ function App() {
       />
       
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow overflow-visible transition-colors">
+      <header className="bg-white dark:bg-gray-800 shadow-sm overflow-visible transition-colors">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6 w-full">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div className="min-w-0 flex-shrink">
+            <div className="min-w-0 shrink">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white truncate">Homelab Inventory</h1>
               <p className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1">Manage your infrastructure monitoring</p>
             </div>
-            <div className="w-full md:w-auto flex-shrink-0">
+            <div className="w-full md:w-auto shrink-0">
               {/* Desktop actions */}
               <div className="hidden md:flex md:flex-wrap md:justify-end md:items-center gap-3 relative">
                 <button 
@@ -373,7 +373,7 @@ function App() {
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg active:bg-orange-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
                   aria-label="Add new device"
                 >
-                  <Plus size={20} className="flex-shrink-0" />
+                  <Plus size={20} className="shrink-0" />
                   <span className="truncate">Add Device</span>
                 </button>
                 <button 
@@ -381,7 +381,7 @@ function App() {
                   className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg active:bg-gray-700 transition-colors touch-manipulation min-h-[44px] text-sm md:text-base"
                   aria-label="Open admin panel"
                 >
-                  <Settings size={20} className="flex-shrink-0" />
+                  <Settings size={20} className="shrink-0" />
                   <span className="truncate">Admin</span>
                 </button>
                 <div className="relative">
@@ -391,7 +391,7 @@ function App() {
                     aria-haspopup="true"
                     aria-expanded={showOtherActions}
                   >
-                    <MoreHorizontal size={20} className="flex-shrink-0" />
+                    <MoreHorizontal size={20} className="shrink-0" />
                     <span className="truncate">Other Actions</span>
                     <ChevronDown size={16} className={`${showOtherActions ? 'rotate-180' : ''} transition-transform`} />
                   </button>
@@ -402,7 +402,7 @@ function App() {
                         disabled={exporting}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-70"
                       >
-                        <Check size={16} className="flex-shrink-0" />
+                        <Check size={16} className="shrink-0" />
                         Write Prometheus
                       </button>
                       <button
@@ -410,49 +410,49 @@ function App() {
                         disabled={exporting}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-70"
                       >
-                        <Download size={16} className="flex-shrink-0" />
+                        <Download size={16} className="shrink-0" />
                         Download Config
                       </button>
                       <button
                         onClick={() => { setShowSdModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <HeartPulse size={16} className="flex-shrink-0" />
+                        <HeartPulse size={16} className="shrink-0" />
                         Prometheus SD &amp; Status
                       </button>
                       <button
                         onClick={() => { setShowBulkModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <FileDown size={16} className="flex-shrink-0" />
+                        <FileDown size={16} className="shrink-0" />
                         Bulk Ops
                       </button>
                       <button
                         onClick={() => { setShowExportModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <Share2 size={16} className="flex-shrink-0" />
+                        <Share2 size={16} className="shrink-0" />
                         Export (Ansible / NetBox)
                       </button>
                       <button
                         onClick={() => { setShowHistoryModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <History size={16} className="flex-shrink-0" />
+                        <History size={16} className="shrink-0" />
                         History
                       </button>
                       <button
                         onClick={() => { setShowDiscoveryModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <Radar size={16} className="flex-shrink-0" />
+                        <Radar size={16} className="shrink-0" />
                         Discover
                       </button>
                       <button
                         onClick={() => { setShowIpamModal(true); setShowOtherActions(false); }}
                         className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                       >
-                        <Network size={16} className="flex-shrink-0" />
+                        <Network size={16} className="shrink-0" />
                         IPAM / Subnets
                       </button>
                     </div>
@@ -480,7 +480,7 @@ function App() {
                   <ChevronDown className={`transition-transform ${showActionMenu ? 'rotate-180' : ''}`} size={18} />
                 </button>
                 {showActionMenu && (
-                  <div id="action-menu" className="mt-2 bg-white border border-gray-200 rounded-lg shadow divide-y divide-gray-100">
+                  <div id="action-menu" className="mt-2 bg-white border border-gray-200 rounded-lg shadow-sm divide-y divide-gray-100">
                     <button
                       onClick={() => { cycleTheme(); setShowActionMenu(false); }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
@@ -570,7 +570,7 @@ function App() {
       {stats && (
         <div className="max-w-7xl mx-auto px-4 py-4 md:py-6">
           <div className={`grid grid-cols-1 ${promEnabled ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:gap-4`}>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm transition-colors">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 dark:text-gray-300 text-sm">Total Devices</p>
@@ -579,7 +579,7 @@ function App() {
                 <Server className="text-blue-600" size={40} />
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm transition-colors">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 dark:text-gray-300 text-sm">Monitoring Enabled</p>
@@ -588,7 +588,7 @@ function App() {
                 <Activity className="text-green-600" size={40} />
               </div>
             </div>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm transition-colors">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 dark:text-gray-300 text-sm">Monitoring Disabled</p>
@@ -601,7 +601,7 @@ function App() {
               <button
                 type="button"
                 onClick={() => setShowSdModal(true)}
-                className="text-left bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors hover:ring-2 hover:ring-blue-500"
+                className="text-left bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm transition-colors hover:ring-2 hover:ring-blue-500"
                 title={promStatus.error || `${promStatus.summary?.up ?? 0} up, ${promStatus.summary?.down ?? 0} down, ${promStatus.summary?.degraded ?? 0} degraded, ${promStatus.summary?.unknown ?? 0} not scraped`}
               >
                 <div className="flex items-center justify-between">
@@ -630,7 +630,7 @@ function App() {
 
       {/* Filters and Search */}
       <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow space-y-4 transition-colors">
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm space-y-4 transition-colors">
           {/* Advanced Search Component */}
           <AdvancedSearch
             onResults={handleSearchResults}
@@ -705,23 +705,23 @@ function App() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1,2,3,4].map(key => (
-              <div key={key} className="bg-white p-4 md:p-6 rounded-lg shadow">
+              <div key={key} className="bg-white p-4 md:p-6 rounded-lg shadow-sm">
                 <div className="animate-pulse space-y-3">
-                  <div className="h-5 bg-gray-200 rounded w-2/3"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                  <div className="h-5 bg-gray-200 rounded-sm w-2/3"></div>
+                  <div className="h-3 bg-gray-200 rounded-sm w-1/3"></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 bg-gray-200 rounded"></div>
-                    <div className="h-3 bg-gray-200 rounded"></div>
+                    <div className="h-3 bg-gray-200 rounded-sm"></div>
+                    <div className="h-3 bg-gray-200 rounded-sm"></div>
+                    <div className="h-3 bg-gray-200 rounded-sm"></div>
+                    <div className="h-3 bg-gray-200 rounded-sm"></div>
                   </div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
+                  <div className="h-10 bg-gray-200 rounded-sm"></div>
                 </div>
               </div>
             ))}
           </div>
         ) : devices.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow text-center transition-colors">
+          <div className="bg-white dark:bg-gray-800 p-12 rounded-lg shadow-sm text-center transition-colors">
             <Server className="mx-auto text-gray-400 dark:text-gray-300 mb-4" size={48} />
             <p className="text-gray-600 dark:text-gray-200">No devices found. Add your first device to get started.</p>
           </div>
@@ -817,7 +817,7 @@ function App() {
       )}
       
       {pendingDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full transition-colors">
             <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Delete device</h3>
@@ -850,13 +850,13 @@ function App() {
         <div className="fixed top-4 left-4 right-4 md:right-4 md:left-auto z-50 max-w-md md:max-w-md mx-auto md:mx-0">
           <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-4 shadow-lg">
             <div className="flex items-start gap-3">
-              <Check className="text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" size={20} />
+              <Check className="text-green-600 dark:text-green-400 shrink-0 mt-0.5" size={20} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-green-700 dark:text-green-200 break-words">{successMessage}</p>
+                <p className="text-sm text-green-700 dark:text-green-200 wrap-break-word">{successMessage}</p>
               </div>
               <button 
                 onClick={() => setSuccessMessage(null)} 
-                className="text-green-400 dark:text-green-300 active:text-green-600 dark:active:text-green-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center flex-shrink-0"
+                className="text-green-400 dark:text-green-300 active:text-green-600 dark:active:text-green-200 transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center shrink-0"
                 aria-label="Close success message"
               >
                 <X size={18} />

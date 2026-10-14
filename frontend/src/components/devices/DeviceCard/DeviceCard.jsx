@@ -24,7 +24,7 @@ function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onCl
 
   if (viewMode === 'condensed') {
     return (
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow active:shadow-lg transition-all">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm active:shadow-lg transition-all">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
           <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
             <div className="flex-1 min-w-0">
@@ -143,11 +143,11 @@ function DeviceCard({ device, status, viewMode, onToggleMonitoring, onEdit, onCl
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow active:shadow-lg transition-all">
+    <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-lg shadow-sm active:shadow-lg transition-all">
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100 break-words">{device.name}</h3>
+            <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100 wrap-break-word">{device.name}</h3>
             <span 
               className={`px-3 py-1 rounded-full text-xs font-medium self-start ${
                 device.monitoring_enabled 

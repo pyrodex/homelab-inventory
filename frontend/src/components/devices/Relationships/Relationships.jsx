@@ -48,7 +48,7 @@ function ImpactPanel({ deviceId, refreshKey }) {
         className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-amber-900 dark:text-amber-100"
         aria-expanded={open}
       >
-        <AlertTriangle size={16} className="flex-shrink-0" />
+        <AlertTriangle size={16} className="shrink-0" />
         <span className="flex-1">
           If this goes down, <strong>{impact.count}</strong> device{impact.count === 1 ? '' : 's'} {impact.count === 1 ? 'is' : 'are'} affected
           {impact.count !== impact.direct && <> ({impact.direct} directly)</>}
@@ -130,7 +130,7 @@ function Relationships({ deviceId, links, onChange, devices = [], impactRefreshK
             const Icon = meta?.icon || Server;
             return (
               <li key={`${link.link_type}-${link.target_id}`} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/40">
-                <Icon size={18} className="text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <Icon size={18} className="text-gray-500 dark:text-gray-400 shrink-0" />
                 <div className="flex-1 min-w-0 text-sm">
                   <span className="text-gray-600 dark:text-gray-300">{meta?.label}</span>{' '}
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{link.target_name}</span>

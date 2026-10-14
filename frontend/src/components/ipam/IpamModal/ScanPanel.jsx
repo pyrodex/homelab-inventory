@@ -77,7 +77,7 @@ function ScanPanel({ subnet, scan, onChanged, onScanned }) {
   if (scan && !scan.eligible) {
     return (
       <div className="flex items-start gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
-        <Radar size={16} className="mt-0.5 flex-shrink-0" />
+        <Radar size={16} className="mt-0.5 shrink-0" />
         <span>Ping sweeps unavailable: {scan.ineligible_reason}</span>
       </div>
     );

@@ -101,8 +101,8 @@ function BulkOperationsModal({ onClose, onSuccess, onError }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 md:p-4 z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-screen md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
         <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Bulk Operations</h2>
           <button
