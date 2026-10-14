@@ -1,6 +1,6 @@
 {
   "name": "homelab-inventory",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Simple React/Flask tool to help manage homelab Inventory and Prometheus monitoring",
   "private": true,
   "type": "module",
