@@ -1,356 +1,304 @@
 # Homelab Inventory
 
-A modern, web-based inventory for homelab infrastructure: track devices and how they depend on each other, feed Prometheus directly, see which IPs are really free, and push your inventory into Ansible, NetBox, or anything that takes a webhook. Built with React and Flask.
+A self-hosted inventory for your homelab. Track every device, what it runs on, and what powers it. It also shows which IP addresses are really free, feeds Prometheus directly, and pushes your inventory into Ansible, NetBox, or anything that accepts a webhook.
+
+Built with React and Flask, stored in SQLite, shipped as two Docker images.
 
 ![Release](https://img.shields.io/github/v/release/pyrodex/homelab-inventory)
 ![License](https://img.shields.io/badge/license-GPLv3-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13-blue.svg)
-![React](https://img.shields.io/badge/react-18.2-blue.svg)
+![React](https://img.shields.io/badge/react-18-blue.svg)
 ![Flask](https://img.shields.io/badge/flask-3.1-green.svg)
 
-> **New in 2.0:** IPAM with ping sweeps and DHCP leases, Prometheus HTTP service discovery and live device status, tags and relationships with impact analysis, Ansible and NetBox exports, and webhooks. Upgrading from 1.x? See [Upgrading to 2.0](#upgrading-to-20). Full list in the [changelog](CHANGELOG.md).
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/dashboard.png">
+  <img alt="Homelab Inventory dashboard" src="screenshots/light/dashboard.png">
+</picture>
 
-## ✨ Features
+> **New in 2.1:**
+> - **Add to monitoring from IPAM.** Click an address that's on the network but not in inventory. The app probes it, picks matching monitors, and adds it in one step.
+> - **Reverse DNS checks** in every ping sweep, shown with a new color in the address grid.
+> - **Tailwind CSS 4** in the frontend.
+>
+> Upgrading? See [Upgrading](#upgrading). Full details are in the [changelog](CHANGELOG.md).
 
-### Device Management
-- **Comprehensive Device Tracking**: Track physical and virtual servers, network switches, wireless access points, IP cameras, IoT devices, and more
-- **Rich Device Information**: Store device names, IP addresses, device functions, vendors, models, locations, serial numbers, and network assignments
-- **Multiple Device Types**: Support for 13+ device types including Linux/FreeBSD servers, network equipment, cameras, and specialized devices
-- **Location Organization**: Organize devices by physical or logical locations (e.g., Data Center, Office, Rack 1)
-- **Vendor & Model Management**: Maintain a catalog of vendors and models for consistent device tracking
-- **Device History & Change Tracking**: Automatic audit log for device create/update/delete and bulk import/delete, with per-device history endpoint and UI timeline plus a global history view (paginated 50/100/250/500/all) under Other Actions
+## Contents
 
-### Monitoring Integration
-- **HTTP Service Discovery**: Prometheus pulls targets straight from the app via `http_sd_configs`; changes apply on its next refresh, with a generated `scrape_configs` snippet
-- **Live Device Status**: Up / Down / Degraded / Not scraped on every device, read from your Prometheus (`probe_success` and `up`)
-- **Prometheus Export**: Automatically generate Prometheus target configurations from your inventory
-- **Multiple Monitor Types**: Support for Node Exporter, smartctl_exporter, SNMP, ICMP, HTTP/HTTPS, DNS, IPMI, NUT, and Docker monitoring
-- **Flexible Monitoring**: Enable or disable monitoring per device, with support for multiple monitors per device
-- **Export Options**: Write Prometheus configs directly to disk or download as a ZIP archive
-- **Organized Exports**: Automatically organize Prometheus targets by monitor type and device category
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Using Homelab Inventory](#using-homelab-inventory)
+- [API reference](#api-reference)
+- [Upgrading](#upgrading)
+- [Backups](#backups)
+- [Security](#security)
+- [Development](#development)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+
+## Features
+
+**Inventory**
+- Thirteen device types: Linux servers (physical and virtual), FreeBSD servers, switches, wireless APs, IP cameras, video streamers, IoT devices, IPMI consoles, UPSes (NUT), URLs, DNS records, and ICMP-only devices.
+- Each device records:
+  - address (IP, hostname or URL), function, vendor, model, location and serial number
+  - networks (LAN, IoT, DMZ, GUEST, ALL)
+  - interface types, from 10Base-T to 400G and Wi-Fi 4–7
+  - PoE details
+- Free-form **tags** with autocomplete and click-to-filter.
+- **Relationships**: *runs on* (VM → host), *connected to* (→ switch, with port), and *powered by* (→ UPS or PDU, with outlet).
+- **Impact analysis** shows everything that goes down with a device.
+- **History**: a field-level change log for every device, plus a global history across the inventory.
+- **Search**: quick search across many fields, plus advanced filters (type, vendor, model, location, monitoring, PoE, IP).
+- Clone devices, and import or export them in bulk as JSON or CSV.
+
+**IPAM**
+- IPv4 and IPv6 subnets in CIDR form, with VLAN, gateway, location, and reserved ranges (DHCP pools, VIPs).
+- A color-coded address grid, utilization bars, free ranges, and **next free IP**.
+- **Ping sweeps** (scheduled or on demand) find addresses that answer but aren't in your inventory.
+- Each sweep also checks **reverse DNS**, flagging stale PTR records and devices with no record.
+- **dnsmasq DHCP leases** from a watched file, a `curl` push, or an upload.
+- **Add to monitoring**: probe an unknown address and add it, with monitors, in one step.
+- Flags duplicate IPs and devices outside every subnet.
+
+**Monitoring**
+- Ten monitor types: node_exporter, smartctl_exporter, SNMP, ICMP, HTTP, HTTPS, DNS, IPMI, NUT, and Docker.
+- **Prometheus HTTP service discovery**, with a generated `scrape_configs` block. File-based export is also available.
+- **Live status** read from your Prometheus: Up, Down, Degraded, or Not scraped on every device.
+
+**Integrations**
+- **Ansible** dynamic inventory: a dependency-free script or a static YAML file.
+- **NetBox** CSV bulk-import bundle.
+- **Webhooks** for device and IPAM events, with HMAC signatures and retries.
+
+**Interface**
+- Responsive React UI with light, dark, and auto themes.
+- Mobile-friendly: large touch targets and safe-area support.
+- Full and condensed list views.
+
+### Screenshots
+
+Full galleries: [light theme](screenshots/light/README.md) · [dark theme](screenshots/dark/README.md)
+
+| IPAM | Add to monitoring | Relationships and impact |
+|---|---|---|
+| ![IPAM](screenshots/light/ipam.png) | ![Add to monitoring](screenshots/light/ipam-add-to-monitoring.png) | ![Relationships](screenshots/light/relationships.png) |
+
+## Quick start
+
+You need Docker with Compose v2. The images are published to GitHub Container Registry, so nothing is built locally.
+
+```bash
+git clone https://github.com/pyrodex/homelab-inventory.git
+cd homelab-inventory
+cp docker-compose.yaml.example docker-compose.yaml   # edit to taste
+docker compose up -d
+```
+
+Open **http://localhost:5000**. The optional sqlite-web database browser is at http://localhost:5001.
+
+The stack has three services:
+
+| Service | Image | Purpose |
+|---|---|---|
+| `frontend` | `ghcr.io/pyrodex/homelab-inventory/frontend` | nginx serving the UI on port 80 (published as 5000) and proxying `/api` to the backend |
+| `backend` | `ghcr.io/pyrodex/homelab-inventory/backend` | Flask API on port 5000, internal only |
+| `sqlite-web` | `coleifer/sqlite-web` | Optional raw database browser. It has **no authentication**, so remove it if you don't need it |
+
+Data lives in `./data` (the SQLite database and backups) and `./targets` (Prometheus file exports). Both are created on first start.
+
+**Image tags:**
+
+| Tag | What it is |
+|---|---|
+| `latest` | The current `main` branch |
+| `2.1.0` | An exact release |
+| `2.1` or `2` | Latest patch, or latest minor, within that line |
+
+To stay on a release line, pin it in `docker-compose.yaml`, e.g. `ghcr.io/pyrodex/homelab-inventory/backend:2`.
+
+## Configuration
+
+All configuration is through environment variables on the **backend** service. Everything optional is off or empty until you set it.
+
+### Core
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_PATH` | `homelab.db` (`/app/data/homelab.db` in the example compose file) | SQLite database file; created if missing |
+| `PROMETHEUS_EXPORT_PATH` | `/app/prometheus_targets` | Where **Write Prometheus** puts file-SD target files |
+| `FLASK_ENV` | `production` | `development` enables debug mode and verbose logging |
+| `AUTO_MIGRATE` | `true` | Apply database migrations on startup. In production a failed migration stops startup |
+| `CORS_ORIGINS` | `*` | Comma-separated allowed origins. The bundled frontend uses the same origin, so you rarely need this |
+| `RATELIMIT_STORAGE_URL` | `memory://` | Rate-limit storage; use Redis or Memcached if you run several backend processes |
+| `SECRET_KEY` | `dev-secret-key-change-in-production` | Flask secret. Nothing relies on it today, but set it anyway; production logs a warning if it's the default |
+| `LOG_LEVEL` | `INFO` | `DEBUG`, `INFO`, `WARNING`, or `ERROR` |
+
+### Prometheus
+
+| Variable | Default | Description |
+|---|---|---|
+| `PROMETHEUS_URL` | — | Your Prometheus, e.g. `http://prometheus:9090`. Enables live device status |
+| `PROMETHEUS_BEARER_TOKEN` | — | Bearer token sent to `PROMETHEUS_URL` |
+| `PROMETHEUS_USERNAME` / `PROMETHEUS_PASSWORD` | — | Basic auth for `PROMETHEUS_URL`, used if no bearer token is set |
+| `PROMETHEUS_VERIFY_TLS` | `true` | Verify TLS for an `https://` Prometheus |
+| `PROMETHEUS_STATUS_CACHE_SECONDS` | `15` | How long status query results are cached |
+| `PROMETHEUS_TIMEOUT_SECONDS` | `5` | Timeout for each status query |
+| `PROMETHEUS_SD_TOKEN` | — | If set, `/api/prometheus/sd` requires `Authorization: Bearer <token>` |
+
+### IPAM
+
+| Variable | Default | Description |
+|---|---|---|
+| `IPAM_BACKGROUND_WORKERS` | `true` | Run the ping-sweep scheduler and the lease-file watcher |
+| `IPAM_SCAN_MAX_HOSTS` | `1024` | Largest subnet, in usable hosts, that may be swept |
+| `IPAM_STALE_AFTER_HOURS` | `72` | How long an address that answered a ping still counts as in use |
+| `IPAM_SWEEP_PTR` | `true` | Look up reverse DNS for every swept address. `false` checks only addresses that answer |
+| `IPAM_PTR_BLOCKS_FREE` | `true` | Keep addresses whose only evidence is a PTR record out of free and next-free |
+| `DNSMASQ_LEASES_PATH` | — | Comma-separated dnsmasq lease files to watch. Mount them into the container |
+| `DNSMASQ_LEASES_POLL_SECONDS` | `60` | How often watched lease files are checked for changes |
+| `IPAM_LEASES_TOKEN` | — | If set, lease uploads require `Authorization: Bearer <token>` |
+
+### Backups
+
+| Variable | Default | Description |
+|---|---|---|
+| `BACKUP_DIRECTORY` | `/app/data/backups` | Where backups are written |
+| `BACKUP_RETENTION_DAYS` | `30` | Backups older than this are deleted |
+| `BACKUP_SCHEDULE` | `0 2 * * *` | Cron schedule for the backup job inside the container, read at container start |
+
+The backend also checks its paths at startup. It creates missing directories and logs warnings for risky settings, such as the default `SECRET_KEY` or `CORS_ORIGINS=*` in production.
+
+## Using Homelab Inventory
+
+The header has **Add Device**, **Admin**, and **Other Actions**. Other Actions opens:
+- Write Prometheus / Download Config
+- Prometheus SD & Status
+- Bulk Ops
+- Export (Ansible / NetBox)
+- History
+- Discover
+- IPAM / Subnets
+
+On mobile, everything is under the **Actions** menu.
+
+### Devices
+
+- **Add a device** with **Add Device**.
+  - The form asks for name, type, address, function, vendor, model, location, and serial number.
+  - Devices added from Discovery, or from an address IPAM has seen on the network, skip vendor, model, location, and serial.
+  - The API itself requires only `name` and `device_type`.
+- **Monitors**: add one or more per device. Leave the port blank to use the default:
+
+  | node_exporter | smartctl_exporter | SNMP | HTTP | HTTPS | DNS | IPMI | NUT | Docker |
+  |---|---|---|---|---|---|---|---|---|
+  | 9100 | 9633 | 161 | 80 | 443 | 53 | 623 | 3493 | 8090 |
+
+  ICMP has no port. An HTTP or HTTPS monitor can also take a full endpoint URL.
+- **Card actions**: toggle monitoring, clone, edit, and delete (with confirmation).
+- **History**:
+  - The device form's **History** section shows field-level diffs.
+  - **Other Actions → History** shows changes across all devices, 50 to 500 per page or all at once.
+- **Admin** manages vendors, models (filtered by vendor), locations, tags, and webhooks.
+
+### Search, filters, and tags
+
+- The search box matches name, IP, function, serial number, networks, interface types, and PoE standards.
+- **Filters** adds type, vendor, model, location, monitoring status, PoE, and has-IP filters. Active filters show as removable chips.
+- **Tags**:
+  - In the device form, type a tag and press Enter or comma. Tags become lowercase slugs (`Home Lab` → `home-lab`).
+  - Click a tag on a card or in the tag bar to filter. Several tags must all match.
+  - Rename, merge, or delete tags under **Admin → Tags**.
+
+### Relationships and impact
+
+In the device form's **Relationships** section, pick a type and a device:
+
+| Type | Meaning | Detail |
+|---|---|---|
+| Runs on | VM or container → host | One host per device |
+| Connected to | Device → switch or AP | Optional port |
+| Powered by | Device → UPS, PDU, or PoE switch | Optional outlet |
+
+Loops are rejected. Every device shows *"If this goes down, N devices are affected"*, with the full dependency tree.
 
 ### Discovery
-- **Network Discovery**: Probe single IPs/hostnames, dashed IP ranges, or CIDR blocks
-- **ICMP + Reverse DNS**: Reachability with RTT plus PTR lookup to prefill hostnames, probed in parallel
-- **Inline Add**: Add discovered devices one-by-one without leaving the results list
-
-### Tags & Relationships
-- **Tags**: Free-form `#tags` on devices with autocomplete; click any tag to filter the list (multiple tags = all must match)
-- **Relationships**: Record what a device *runs on* (VM → host), is *connected to* (→ switch, with port) and is *powered by* (→ UPS/PDU, with outlet)
-- **Impact Analysis**: See everything that goes down with a device, as a dependency tree
-- **Everywhere**: Tags work in search, bulk CSV/JSON import & export, history, and Prometheus labels (`tags`, `runs_on`)
-
-### Webhooks
-- **Change Notifications**: JSON POST to Home Assistant, n8n, ntfy, etc. when devices are created, updated, deleted, or re-linked
-- **New-Device Alerts**: `ipam.address_discovered` fires when a sweep or DHCP lease finds an address that isn't in inventory
-- **Signed & Retried**: Optional HMAC-SHA256 signature (`X-Hub-Signature-256`), retries on 5xx/timeouts, per-webhook delivery log
-
-### Exports
-- **Ansible Dynamic Inventory**: Drop-in script (stdlib only) or static YAML; groups by type, location, vendor, tag, network, and host
-- **NetBox CSV**: Ordered bulk-import files (sites → device types → devices → VMs → VLANs → prefixes → IPs) matching NetBox 4.7
-
-### IPAM / Subnets
-- **CIDR Subnets**: Define IPv4/IPv6 subnets with name, VLAN, gateway, location, and description
-- **Free Address View**: Color-coded address grid shows monitored, unmonitored, reserved, gateway, and free IPs
-- **Next Free IP**: One click to copy the next available address or add a device with it prefilled
-- **Reserved Ranges**: Exclude DHCP pools, VIPs, or future-use blocks from the free pool
-- **Monitor-aware**: IPs referenced by monitor endpoints (e.g. `http://10.0.0.5/admin`) count as in use
-- **Hygiene Checks**: Flags duplicate IP assignments and devices whose IP isn't inside any defined subnet
-- **Ping Sweeps**: Scheduled per-subnet sweeps (IPv4) find addresses that answer but aren't in inventory
-- **Reverse DNS**: Sweeps check PTR records for every address; DNS-only addresses get their own color and every PTR holder a marker, so stale DNS and devices missing records stand out
-- **DHCP Leases**: Import dnsmasq leases (watched file, `curl` push, or upload) so active leases aren't handed out twice
-- **Add to Monitoring**: Click an address that's on the network but not in inventory (or in inventory with monitoring off) to probe it and start monitoring it in one step
-
-### User Interface
-- **Modern React UI**: Responsive interface built with React and Tailwind CSS
-- **Dark Mode with Auto Theme**: Light/dark themes with system-preference auto mode; all dialogs (Admin, Bulk Ops, Advanced Search, Device modals) are theme aware
-- **Mobile-Optimized**: Touch-friendly controls, safe area support, and optimized touch targets
-- **Advanced Search**: Multi-field search with expandable filters (vendor, model, location, monitoring status, PoE, IP address)
-- **Search & Filter**: Real-time search across device fields with debouncing and filter by device type
-- **View Modes**: Switch between full detail view and condensed list view
-- **Real-time Stats**: Dashboard showing total devices, monitoring status, and device type breakdowns
-- **Device Cloning**: Quickly duplicate devices with similar configurations
-- **Bulk Operations**: Import/export devices in JSON or CSV format, bulk delete multiple devices
-
-### Network & Power Management
-- **Network Segmentation**: Assign devices to specific networks (LAN, IoT, DMZ, GUEST, or ALL)
-- **Interface Types**: Track network interface types from 10Base-T to 400G QSFP-DD, including Wi-Fi standards
-- **PoE Support**: Track Power over Ethernet (PoE) powered devices and standards (802.3af/at/bt)
-- **Serial Number Tracking**: Maintain serial number records for warranty and asset management
-
-### Administration
-- **Vendor Management**: Add, edit, and remove vendors with automatic model relationship handling
-- **Model Management**: Associate models with vendors, filter models by vendor, and track device counts
-- **Location Management**: Create and organize locations with device count tracking
-- **SQLite Web Interface**: Optional SQLite-web container for direct database access
-
-### Bulk Operations
-- **Import Devices**: Import multiple devices from JSON array or CSV file with validation and error reporting
-- **Export Devices**: Export all devices or filtered by type in JSON or CSV format
-- **Bulk Delete**: Delete multiple devices at once by ID (up to 100 at a time)
-- **Error Handling**: Detailed import/export results showing successful and failed operations
-
-### Advanced Search & Filtering
-- **Multi-field Search**: Search across name, IP address, device function, serial number, networks, interface types, and PoE standards
-- **Advanced Filters**: Filter by device type, vendor, model, location, monitoring status, PoE powered status, and IP address presence
-- **Filter Chips**: Visual representation of active filters with easy removal
-- **Real-time Results**: Instant search results with debouncing for optimal performance
-
-### Monitoring & Observability
-- **Health Checks**: Basic and detailed health endpoints for monitoring application status
-- **System Metrics**: CPU, memory, and disk usage metrics (requires psutil)
-- **Database Statistics**: Device counts and database connectivity status
-- **Device History API**: `/api/devices/<id>/history` for audit visibility
-
-## 📸 Screenshots
-
-- [Light theme gallery](screenshots/light/README.md)
-- [Dark theme gallery](screenshots/dark/README.md)
-
-## 🏗️ Architecture
-
-### Technology Stack
-
-**Frontend:**
-- React 18.2 with modern hooks
-- Vite for fast development and optimized builds
-- Tailwind CSS for responsive, utility-first styling
-- Lucide React for beautiful icons
-- Mobile-optimized with iOS-specific enhancements
-
-**Backend:**
-- Flask 3.1 RESTful API with modular blueprint architecture
-- SQLAlchemy ORM for database operations
-- Flask-Migrate/Alembic for database schema versioning (auto-migrate on startup enabled by default, can disable via `AUTO_MIGRATE=false`)
-- SQLite database (lightweight, file-based) with optimized indexes
-- Flask-CORS for cross-origin resource sharing
-- Flask-Limiter for API rate limiting
-- Marshmallow for input validation and sanitization
-- iputils-ping for ICMP discovery (bundled in backend image) with Python ping3 fallback
-- PyYAML for Prometheus configuration generation
-- Background workers (in-process) for scheduled IPAM ping sweeps, dnsmasq lease-file watching, and webhook delivery
-- psutil for system metrics (optional)
-- pytest for testing framework
-- Automated database backup system
-- Standardized API response format
-- Environment validation on startup
-
-**Infrastructure:**
-- Docker & Docker Compose for containerization
-- Nginx for serving the frontend
-- Multi-stage builds for optimized image sizes
-- Volume mounts for persistent data storage
-
-### Project Structure
-
-```
-homelab-inventory/
-├── backend/                 # Flask API, migrations, services, scripts, tests
-│   └── scripts/ansible_inventory.py  # Ansible dynamic inventory script (also served by the API)
-├── frontend/                # React UI + nginx reverse proxy for /api
-├── contrib/ansible/         # Ansible inventory docs: groups and host variables
-├── CHANGELOG.md             # Release notes
-├── docker-compose.yaml      # Default stack (frontend, backend, sqlite-web)
-├── docker-compose.yaml.example
-├── BACKUP_README.md         # Standalone backup guide
-├── screenshots/             # Light/dark galleries
-├── targets/                 # Prometheus export directory (created at runtime)
-└── README.md                # This file
-```
-The `data/` directory (SQLite DB + backups) is created on first run.
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- **Docker** (version 20.10 or later)
-- **Docker Compose** (version 2.0 or later)
-- **Git** (for cloning the repository)
-
-For local development:
-- **Node.js** (version 20 or later recommended; Docker uses Node 22) and npm
-- **Python** (version 3.13 or later) and pip
 
-## 🚀 Quick Start
-
-### Using Docker Compose (Recommended)
-
-The repo ships with a ready-to-run Compose file that pulls the pre-built images published from this repository—no local build required.
-
-1. **Clone the repository:**
-   ```bash
-   git clone <repository-url>
-   cd homelab-inventory
-   ```
-
-2. **Set up Docker Compose (optional clean copy):**
-   ```bash
-   cp docker-compose.yaml.example docker-compose.yaml
-   ```
-   The included `docker-compose.yaml` already points to the published images if you just want to `up` and go.
-
-3. **Start the containers:**
-   ```bash
-   docker compose up -d
-   ```
-
-   The default images come from GitHub Container Registry for this repo:
-   - `ghcr.io/pyrodex/homelab-inventory/backend:latest`
-   - `ghcr.io/pyrodex/homelab-inventory/frontend:latest`
-
-   If you fork/publish your own images, update the `image:` fields accordingly.
-
-4. **Access the application:**
-   - **Web UI**: http://localhost:5000
-   - **SQLite Web Interface** (optional): http://localhost:5001
-
-> **Note:** If you prefer to build the images locally, run `docker compose build` (or switch `image:` to `build:` in `docker-compose.yaml`) and push to your own registry if desired.
-
-### Manual Setup
-
-#### Backend Setup
-
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Create virtual environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Set environment variables:**
-   ```bash
-   export FLASK_ENV=development
-   export DATABASE_PATH=./homelab.db
-   export PROMETHEUS_EXPORT_PATH=./prometheus_targets
-   ```
-
-5. **Run the Flask application:**
-   ```bash
-   python app.py
-   ```
-
-   The backend will be available at http://localhost:5000
-
-#### Frontend Setup
-
-1. **Navigate to frontend directory:**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start development server:**
-   ```bash
-   npm run dev
-   ```
-
-   The frontend will be available at http://localhost:5173 (or the port Vite assigns)
-
-4. **Build for production:**
-   ```bash
-   npm run build
-   ```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-#### Backend
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FLASK_ENV` | Flask environment (development/production) | `production` |
-| `DATABASE_PATH` | Path to SQLite database file | `homelab.db` |
-| `PROMETHEUS_EXPORT_PATH` | Directory for Prometheus config exports | `/app/prometheus_targets` |
-| `AUTO_MIGRATE` | Apply Alembic migrations on startup (`true`/`false`) | `true` |
-| `RATELIMIT_STORAGE_URL` | Rate limit storage (use Redis/Memcached for prod) | `memory://` |
-| `CORS_ORIGINS` | Comma-separated list of allowed CORS origins (use `*` for all) | `*` |
-| `BACKUP_DIRECTORY` | Directory for database backups | `/app/data/backups` |
-| `BACKUP_RETENTION_DAYS` | Number of days to keep backups before cleanup | `30` |
-| `BACKUP_SCHEDULE` | Cron schedule for automatic backups | `0 2 * * *` |
-| `SECRET_KEY` | Flask secret key (change in production!) | `dev-secret-key-change-in-production` |
-| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
-| `PROMETHEUS_URL` | Prometheus server for live device status (e.g. `http://prometheus:9090`); unset disables status | — |
-| `PROMETHEUS_BEARER_TOKEN` | Bearer token sent to `PROMETHEUS_URL` | — |
-| `PROMETHEUS_USERNAME` / `PROMETHEUS_PASSWORD` | Basic auth for `PROMETHEUS_URL` (used if no bearer token) | — |
-| `PROMETHEUS_VERIFY_TLS` | Verify TLS certificates for an `https://` Prometheus | `true` |
-| `PROMETHEUS_STATUS_CACHE_SECONDS` | How long to cache status queries | `15` |
-| `PROMETHEUS_TIMEOUT_SECONDS` | Timeout for each status query | `5` |
-| `PROMETHEUS_SD_TOKEN` | If set, `/api/prometheus/sd` requires `Authorization: Bearer <token>` | — |
-| `IPAM_BACKGROUND_WORKERS` | Run the ping-sweep scheduler and lease-file watcher | `true` |
-| `IPAM_SCAN_MAX_HOSTS` | Largest subnet (usable hosts) that may be swept | `1024` |
-| `IPAM_STALE_AFTER_HOURS` | How long a ping-seen address counts as in use | `72` |
-| `IPAM_SWEEP_PTR` | Look up reverse DNS (PTR) for every swept address, not just ones that answer | `true` |
-| `IPAM_PTR_BLOCKS_FREE` | Keep addresses whose only evidence is a PTR record out of free / next-free | `true` |
-| `DNSMASQ_LEASES_PATH` | Comma-separated dnsmasq lease files to watch (mount them into the container) | — |
-| `DNSMASQ_LEASES_POLL_SECONDS` | How often watched lease files are checked for changes | `60` |
-| `IPAM_LEASES_TOKEN` | If set, lease uploads require `Authorization: Bearer <token>` | — |
-
-#### Docker Compose
-
-Edit `docker-compose.yaml` to customize:
-
-- **Ports**: Change `5000:80` for frontend port mapping
-- **Volumes**: Adjust `./data` and `./targets` paths as needed
-- **Database Path**: Modify `DATABASE_PATH` environment variable
-- **Prometheus Export Path**: Modify `PROMETHEUS_EXPORT_PATH` environment variable
-
-### Database
-
-The application uses SQLite by default (`DATABASE_PATH`, default `homelab.db`). The database file is created if missing.
-
-On a brand-new database, core tables are bootstrapped automatically (after migrations) on startup.
-
-**Schema management (migrations):**
-- Flask-Migrate/Alembic manage schema. Migrations live in `backend/migrations/versions/`.
-- Auto-migration runs on startup by default (`AUTO_MIGRATE=true`). Set `AUTO_MIGRATE=false` to skip.
-- Generate migrations after model changes: `flask db migrate -m "description"` and apply with `flask db upgrade`.
-
-**Performance Optimizations:**
-- Database indexes on frequently queried fields (name, device_type, ip_address, monitoring_enabled, etc.)
-- Composite indexes for common query patterns
-- Foreign key indexes for faster joins
-
-**Database Backups:**
-- Automated backup script included (`backend/scripts/backup_db.py`)
-- Creates timestamped backups with automatic cleanup
-- Configurable retention period (default: 30 days)
-- Automatic daily backups via cron (configured in Docker container)
-- Uses SQLite's native backup API for consistency
-- Manual backup: `docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py`
-- Backups stored in `data/backups/` directory
-- See [Database Backup & Restore](#-database-backup--restore) section below for detailed instructions
-
-**Environment Validation:**
-- Application validates environment variables and paths on startup
-- Automatically creates required directories if they don't exist
-- Provides security warnings in production (default SECRET_KEY, open CORS)
-- Fails fast in production if critical configuration is missing
-
-**To use a different database:**
-1. Set the `DATABASE_PATH` environment variable
-2. Ensure the directory exists and is writable
-3. Run migrations if needed
-4. Restart the application
-
-### Prometheus Integration
-
-#### HTTP service discovery (recommended)
-
-Prometheus can pull targets straight from the app with `http_sd_configs`, so edits take effect on the next refresh with no file export or reload. Open **Other Actions → Prometheus SD & Status** to generate a ready-to-paste `scrape_configs` block (it includes blackbox/SNMP relabeling for probe-style groups), or write one by hand:
+**Other Actions → Discover** probes:
+- single IPs or hostnames
+- a dashed range (`192.168.1.10-192.168.1.20`)
+- a CIDR block (`192.168.1.0/28`)
+
+Up to 256 targets are probed in parallel. Each result shows reachability, round-trip time, and reverse DNS, with **Add Device** to save it straight from the list.
+
+### IPAM
+
+Open **Other Actions → IPAM / Subnets** and click **Add subnet**. Enter a CIDR (e.g. `192.168.10.0/24`) and, optionally:
+- name, VLAN, and gateway
+- location (devices added from IPAM inherit it)
+- description
+- reserved ranges such as a DHCP pool (`192.168.10.100-199`)
+
+Usage is computed live from device IPs and monitor endpoints, so there's nothing to keep in sync. The address grid uses these colors:
+
+| Color | Meaning | Counts as free? |
+|---|---|---|
+| Green | In inventory and monitored | No |
+| Amber | In inventory, monitoring off | No |
+| Violet | Answered a ping sweep, not in inventory | No |
+| Cyan | Active DHCP lease, not in inventory | No |
+| Rose | Has a PTR record, nothing else claims it | No, unless `IPAM_PTR_BLOCKS_FREE=false` |
+| Blue | Gateway | No |
+| Striped | Reserved range | No |
+| Dark | Network or broadcast address | No |
+| White | Free | Yes |
+
+A small rose dot marks any address with a PTR record.
+
+**Using the grid**
+- Click a free address, or **Next free**, to copy it or add a device there with the IP and location filled in.
+- **In use** lists inventoried addresses with their PTR names, and flags devices with **no PTR**.
+- **Outside any subnet** lists devices whose IP isn't covered by a subnet.
+- Subnets over 4,096 addresses skip the grid and show compressed free ranges.
+- Devices addressed by hostname aren't counted, since their IP isn't known.
+
+**Ping sweeps**
+- Tick **Ping sweep** on a subnet and pick an interval (5 minutes to 7 days), or click **Scan now**.
+- Sweeps are IPv4-only, limited to `IPAM_SCAN_MAX_HOSTS`, and ping in parallel. A /24 takes about a second.
+- Every sweep also looks up the PTR record for each address, using the backend's resolver.
+- A resolver failure never erases a name already recorded. Only a definite "no record" clears it.
+
+**DHCP leases (dnsmasq)** can come in three ways:
+- **Watched file:** mount the lease file and set `DNSMASQ_LEASES_PATH=/leases/dnsmasq.leases`. It's re-read whenever it changes.
+- **Push** from the dnsmasq host, e.g. with cron:
+
+  ```bash
+  curl -fsS --data-binary @/var/lib/misc/dnsmasq.leases \
+    "http://homelab-inventory:5000/api/ipam/dhcp/leases?source=pihole"
+  ```
+- **Upload or paste** under **IPAM → DHCP leases**.
+
+Each source is a snapshot: leases missing from its next import are released, and expired leases stop counting automatically.
+
+**Not in inventory** lists every violet, cyan, or rose address with its evidence: ping time, lease, hostname, MAC, and PTR. **Add** opens the full device form, filled in.
+
+**Add to monitoring** works on any violet, cyan, rose, or amber address. Click it in the grid, in **Not in inventory**, or on an amber **In use** row.
+- **Probing**:
+  - The window pings the address and tries TCP connections to 9100, 9633, 80, 443, 53, 3493, and 8090.
+  - Monitors for whatever answers are pre-selected, with the reason shown.
+  - SNMP and IPMI use UDP and can't be detected this way; tick them yourself.
+- **Not in inventory**:
+  - The name comes from the DHCP or PTR hostname, and the location from the subnet.
+  - The device type comes from what answered: NUT means a UPS, node_exporter means a Linux server.
+  - **Add & monitor** creates the device and its monitors in one step.
+- **Monitoring off**: **Turn on monitoring** enables the device and adds any monitors you ticked.
+- **Safety and side effects**:
+  - Only addresses inside a defined subnet can be probed, so this can't be used to scan arbitrary hosts.
+  - Changes appear in device history and fire webhooks like any other edit.
+
+### Prometheus
+
+**HTTP service discovery (recommended).** Prometheus pulls targets from the app, so edits apply on its next refresh. You don't need file exports or reloads. **Other Actions → Prometheus SD & Status** generates a ready-to-paste `scrape_configs` block, including blackbox and SNMP exporter relabeling. Or write one by hand:
 
 ```yaml
 scrape_configs:
@@ -362,83 +310,69 @@ scrape_configs:
         #   credentials: <PROMETHEUS_SD_TOKEN>
 ```
 
-Groups match the export folder names (`linux_node_exporter`, `snmp`, `icmp`, …). Targets carry the same labels as the file export plus `inventory_device_id` and `inventory_group`.
+**Groups** follow the monitor type: `linux_node_exporter`, `freebsd_node_exporter`, `node_exporter`, `smartctl_exporter`, `snmp`, `icmp`, `http`, `https`, `dns`, `ipmi`, `nut`, and `docker`.
 
-#### Live device status
+**Target labels:**
+- device fields: `device_name`, `device_type`, `ip_address`, `deviceFunction`, `networks`, `vendor`, `model`, `location`, `serial_number`, `interface_type`, `poe_powered`, `poe_standards`
+- monitor fields: `monitor_type`, `monitor_endpoint`
+- inventory links: `inventory_device_id`, `tags`, `runs_on`
+- service discovery also adds `inventory_group`
 
-Set `PROMETHEUS_URL` and each device shows **Up / Down / Degraded / Not scraped**, and a Prometheus card appears in the stats row. The app reads `probe_success` (blackbox probes) and `up` (exporters), matching series by `inventory_device_id` + `monitor_type`, then `device_name` + `monitor_type`, then `instance` — so jobs you wrote by hand still match by address. Status polls every 60 seconds; if Prometheus is unreachable the badges hide rather than show stale state.
+`tags` is written as `,prod,web,`, so `tags=~".*,prod,.*"` matches exactly one tag. Devices without an IP and disabled monitors are skipped.
 
-#### File-based discovery
+**Live status.** Set `PROMETHEUS_URL` and each device shows **Up**, **Down**, **Degraded**, or **Not scraped**, with a Prometheus card in the stats row.
+- **How series are read:** `probe_success` (blackbox probes) and `up` (exporters).
+- **How series are matched to devices:**
+  1. `inventory_device_id` + `monitor_type`
+  2. `device_name` + `monitor_type`
+  3. `instance` address, so hand-written jobs still match
+- Status refreshes every 60 seconds. If Prometheus is unreachable, the badges hide rather than show stale data.
 
-The application can also export Prometheus target configurations in YAML format. Configure your Prometheus instance to scrape from the export directory:
+**File-based discovery.** **Write Prometheus** writes one YAML file per device into `PROMETHEUS_EXPORT_PATH/<group>/`. **Download Config** gives the same files as a ZIP.
 
 ```yaml
-# prometheus.yml
 scrape_configs:
-  - job_name: 'linux_node_exporter'
+  - job_name: linux_node_exporter
     file_sd_configs:
-      - files:
-        - '/path/to/prometheus_targets/linux_node_exporter/*.yaml'
+      - files: ['/path/to/targets/linux_node_exporter/*.yaml']
 ```
 
-## 📖 Usage Guide
+### Ansible and NetBox
 
-### Adding Devices
+Open **Other Actions → Export (Ansible / NetBox)**. Tag and monitoring filters apply to both.
 
-1. Click the **"Add Device"** button in the header
-2. Fill in required fields:
-   - Device Name
-   - Device Type
-   - Address (IP address, hostname, or URL)
-   - Device Function
-   - Vendor (create new if needed)
-   - Model (create new if needed)
-   - Location (create new if needed)
-   - Serial Number
-3. Configure optional settings:
-   - Networks (LAN, IoT, DMZ, GUEST, or ALL)
-   - Interface Types
-   - PoE Standards (if applicable)
-   - PoE Powered checkbox
-   - Monitoring Enabled checkbox
-4. Add monitors (e.g., Node Exporter on port 9100)
-5. Click **"Create Device"**
-
-### Discovering Devices
-
-1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **Discover**.
-2. Enter targets:
-   - Single IPs/hostnames (comma or newline separated)
-   - IP range (e.g., `192.168.1.10-192.168.1.20`)
-   - CIDR (e.g., `192.168.1.0/28`)
-3. Run discovery to see ICMP reachability (with RTT) and reverse DNS results.
-4. Click **Add Device** on any row to prefill and save a device while staying on the discovery results.
-
-### Tags and Relationships
-
-- **Tags**: in the device form, type a tag and press Enter or comma. Tags are normalized to lowercase slugs (`Home Lab` → `home-lab`). Click a tag on any device, or in the filter bar, to filter. Rename, merge, or delete tags under **Admin → Tags**.
-- **Relationships**: in the device form's **Relationships** section, pick a type and a device:
-  - **Runs on**: VM or container → host (one host per device; loops are rejected)
-  - **Connected to**: device → switch or AP, with an optional port
-  - **Powered by**: device → UPS, PDU, or PoE switch, with an optional outlet
-- **Impact**: open any device to see *"If this goes down, N devices are affected"* with the full dependency tree.
-- **Prometheus**: targets get `tags` (as `,prod,web,`, so `tags=~".*,prod,.*"` matches exactly one tag) and `runs_on` labels.
+- **Ansible**:
+  - Copy the setup commands shown (they download the inventory script from your instance), or download a static YAML inventory.
+  - Hostnames stay the same whatever filters you use.
+  - Groups and host variables are documented in [contrib/ansible](contrib/ansible/README.md).
+- **NetBox**:
+  - Download the ZIP and import the CSVs in numbered order.
+  - Locations become sites and device types become roles.
+  - VMs attach to their *runs on* host.
+  - IPs take their subnet's prefix length.
 
 ### Webhooks
 
-**Admin → Webhooks → Add webhook**: give it a URL and pick events. A signing secret is generated by default and shown **once**. Use **Test** to send a `ping`.
+**Admin → Webhooks → Add webhook**: give it a URL and pick events. A signing secret is generated by default and shown **once**. **Test** sends a `ping`.
 
 | Event | When |
 |---|---|
-| `device.created` | Device added (UI, API, or bulk import) |
-| `device.updated` | Any tracked field or tag changes (including tag renames) |
-| `device.deleted` | Device removed (single or bulk) |
-| `device.relationship_changed` | A runs on / connected to / powered by link is added, edited, or removed |
+| `device.created` | A device is added (UI, API, bulk import, or IPAM) |
+| `device.updated` | A tracked field or tag changes, including tag renames |
+| `device.deleted` | A device is removed (single or bulk) |
+| `device.relationship_changed` | A runs on, connected to, or powered by link is added, edited, or removed |
 | `ipam.address_discovered` | A ping sweep or DHCP lease reports a new address that isn't in inventory |
 
-Payload: `{id, event, occurred_at, source, device, changes, summary, change_type}`; `ipam.address_discovered` carries `address`, `subnet` and `discovered_by` instead. Events fire only after the change commits. Deliveries time out after 5 s, don't follow redirects, and retry after 10 s and 60 s on 5xx/408/429/connection errors. Queued deliveries don't survive a restart.
+**Payload:** `{id, event, occurred_at, source, device, changes, summary, change_type}`. For `ipam.address_discovered`, `address`, `subnet`, and `discovered_by` replace the device fields.
 
-Verifying the signature (Python):
+**Delivery:**
+- Events fire only after the change is committed.
+- Deliveries time out after 5 seconds and don't follow redirects.
+- On 5xx, 408, 429, or connection errors, they retry after 10 s and again after 60 s.
+- Queued deliveries don't survive a restart.
+- Each webhook's delivery log shows its last 50 attempts.
+
+Verify the signature (Python):
 
 ```python
 import hashlib, hmac
@@ -446,901 +380,386 @@ expected = "sha256=" + hmac.new(SECRET.encode(), request_body_bytes, hashlib.sha
 assert hmac.compare_digest(expected, headers["X-Hub-Signature-256"])
 ```
 
-> The app has no authentication yet, so anyone who can reach it can add a webhook pointing anywhere on your network. Keep it behind your reverse proxy's auth.
+### Bulk import, export, and delete
 
-### Exporting to Ansible and NetBox
+**Other Actions → Bulk Ops**:
+- **Import** a JSON array of device objects (same fields as the API) or a CSV file.
+  - CSV columns: `name`, `device_type`, `ip_address`, `deviceFunction`, `vendor`, `model`, `location`, `serial_number`, `networks`, `interface_type`, `poe_powered`, `poe_standards`, `monitoring_enabled`, `tags`.
+  - Vendor, model, and location are matched by name and must already exist.
+  - Monitors aren't imported; add them afterwards.
+  - Each row succeeds or fails on its own, and the result lists the errors.
+- **Export** all devices, or one type, as JSON or CSV. The CSV includes tags and timestamps.
+- **Delete** up to 100 devices at once by ID.
 
-Open **Other Actions → Export (Ansible / NetBox)**. Filters (tags, monitoring enabled) apply to both.
+## API reference
 
-- **Ansible**: copy the setup commands shown (they download the inventory script from your instance), or download a static YAML inventory. See [contrib/ansible](contrib/ansible/README.md) for groups and host variables. Hostnames are stable across filters.
-- **NetBox**: download the ZIP and import the files in numbered order. Locations become sites, device types become roles, VMs attach to their *runs on* host, and IPs use their subnet's prefix length. Subnets, VLANs and gateways are always included, because they aren't tagged.
+All endpoints are under `/api`. In the Docker stack, reach them through the frontend (`http://<host>:5000/api/...`).
 
-### Finding Free IPs (IPAM)
+> **Response shapes.**
+> - Device, discovery, relationship, and tag endpoints wrap results as `{"success": true, "data": ..., "message": ...}`. Their errors look like `{"success": false, "error": ..., "details": {...}, "error_code": ...}`.
+> - Other endpoints return the object directly, with errors as `{"error": ..., "details": {...}}`.
+> - Validation errors are `400`, and rate-limit errors are `429`.
 
-1. Open **Other Actions** (desktop) or the **Actions** menu (mobile), then select **IPAM / Subnets**.
-2. Click **Add subnet** and enter a CIDR (e.g., `192.168.10.0/24`). Optionally set a gateway, VLAN, location, and reserved ranges such as a DHCP pool (`192.168.10.100-199`).
-3. Select a subnet to see utilization. Usage is computed live from device IPs and monitor endpoints, so there's nothing to keep in sync:
-   - **Green** – inventoried and monitored
-   - **Amber** – inventoried, but monitoring is off (still taken)
-   - **Striped** – reserved; **Blue** – gateway; **White** – free
-4. Click any free address (or **Next free**) to copy it or **Add device** with the IP and location prefilled.
-5. **Outside any subnet** lists devices whose IP isn't covered by a defined subnet.
+### Devices and monitors
 
-Subnets larger than 4,096 addresses skip the grid and show compressed free ranges instead. Devices addressed by hostname aren't counted, since their IP isn't known.
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/devices` | `?type=` and `?tag=` filters (repeat `tag`; all must match) |
+| GET | `/devices/:id` | |
+| POST | `/devices` | `name` and `device_type` required; `tags` as a list or comma-separated string |
+| PUT | `/devices/:id` | Partial updates allowed |
+| DELETE | `/devices/:id` | |
+| GET | `/devices/:id/history` | `limit`, `offset` |
+| GET | `/devices/history` | All devices; `limit` (number or `all`), `offset` |
+| POST | `/devices/:id/monitors` | `monitor_type`, `port`, `endpoint`, `notes` |
+| PUT / DELETE | `/monitors/:id` | |
+| GET | `/stats` | Totals, monitoring counts, counts per type |
+| GET | `/search/devices` | `q`, `type`, `vendor_id`, `model_id`, `location_id`, `monitoring_enabled`, `poe_powered`, `has_ip`, `tag` |
 
-**What's really on the network.** Inventory isn't the only thing using addresses, so IPAM can also look at the network:
+### Vendors, models, and locations
 
-- **Ping sweeps**: in a subnet, tick **Ping sweep** and pick an interval, or click **Scan now**. Addresses that answered within `IPAM_STALE_AFTER_HOURS` show in violet and stop counting as free. Sweeps are IPv4-only and limited to `IPAM_SCAN_MAX_HOSTS`. A /24 takes about a second, since pings run in parallel.
-- **Reverse DNS**: every sweep also looks up the PTR record for each address, using the backend's resolver.
-  - **Rose cells** have a PTR record but nothing else claims them: no device, no ping reply, no lease. That's usually stale DNS or a host that's off. They aren't offered as free unless `IPAM_PTR_BLOCKS_FREE=false`.
-  - **A small rose dot** marks any address with a PTR record, whatever its other status. The **In use** list shows each device's PTR name, or **no PTR** when the sweep found none.
-  - A resolver failure never erases a known name; only a definite "no record" clears it.
-- **DHCP leases (dnsmasq)**: active leases show in cyan with hostname and MAC. Feed them in any of three ways:
-  - Mount the lease file and set `DNSMASQ_LEASES_PATH=/leases/dnsmasq.leases`; it's re-read when it changes.
-  - Push it from the dnsmasq host with cron: `curl -fsS --data-binary @/var/lib/misc/dnsmasq.leases "http://homelab-inventory:5000/api/ipam/dhcp/leases?source=pihole"`
-  - Upload or paste it under **IPAM → DHCP leases**.
+| Method | Path | Notes |
+|---|---|---|
+| GET / POST | `/vendors`, `/models`, `/locations` | `/models?vendor_id=` filters by vendor |
+| GET / PUT / DELETE | `/vendors/:id`, `/models/:id`, `/locations/:id` | |
 
-  Each source is a snapshot: leases missing from its next import are released. Expired leases stop counting automatically.
-- **On the network, not in inventory** lists every such address with its evidence. Click **Add** to create a device with the IP and hostname prefilled.
+### Tags and relationships
 
-**Add to monitoring.** Click a violet, cyan, rose or amber address (in the grid, the **On the network, not in inventory** list, or an amber row under **In use**) to open the **Add to monitoring** window.
-- It pings the address and tries TCP connections to common exporter ports: node_exporter 9100, smartctl_exporter 9633, HTTP 80, HTTPS 443, DNS 53, NUT 3493 and Docker/cAdvisor 8090. Monitors for whatever answers are ticked for you, with the reason shown. SNMP and IPMI use UDP, so they can't be detected; tick them yourself.
-- **Not in inventory**: the name comes from the DHCP or PTR hostname, the location from the subnet, and the device type from what answered (NUT → UPS, node_exporter → Linux server). **Add & monitor** creates the device and its monitors in one step. Use **Open full device form** to fill in everything else.
-- **Monitoring off**: existing monitors are shown as already set up. **Turn on monitoring** enables the device and adds any monitors you ticked.
-- Only addresses inside a defined subnet can be probed, so this can't be used to scan arbitrary hosts. The change appears in device history and fires the usual webhooks.
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/tags` | With device counts |
+| PUT | `/tags/:id` | Rename; renaming onto an existing tag merges them |
+| DELETE | `/tags/:id` | Removes it from all devices |
+| GET | `/devices/:id/links` | Outgoing and incoming |
+| POST | `/devices/:id/links` | `target_id`, `link_type` (`runs_on`, `connected_to`, `powered_by`), `port`, `notes` |
+| PUT / DELETE | `/links/:id` | PUT updates `port` and `notes` |
+| GET | `/devices/:id/impact` | Everything that depends on it; `?types=runs_on,powered_by` |
 
-### Managing Vendors, Models, and Locations
+### Discovery
 
-1. Click the **"Admin"** button in the header
-2. Navigate between tabs:
-   - **Vendors**: Add, edit, or remove vendors
-   - **Models**: 
-     - Select a vendor from the dropdown to filter models (or "All Vendors" to see all)
-     - Add models associated with the selected vendor
-     - Models list automatically filters when a vendor is selected
-   - **Locations**: Add, edit, or remove locations
-3. Use inline editing for quick updates
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/discovery` | `targets` (list or comma/newline string), `range`, `cidr`; up to 256 targets |
 
-### Exporting Prometheus Configuration
+### IPAM
 
-1. **Write to Disk**: Click **"Write Prometheus Files"** to generate configs in the export directory
-2. **Download ZIP**: Click **"Download Config"** to download a ZIP archive of Prometheus targets
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/subnets` | With utilization summaries |
+| POST | `/subnets` | `cidr` required; `name`, `vlan_id`, `gateway`, `reserved_ranges`, `location_id`, `description` |
+| GET | `/subnets/:id` | Summary, per-address status (up to 4,096), used addresses, free ranges, conflicts, unknown addresses |
+| PUT | `/subnets/:id` | Also `scan_enabled`, `scan_interval_minutes` (5–10080) |
+| DELETE | `/subnets/:id` | Devices are untouched |
+| GET | `/subnets/:id/next-free` | `?count=` (up to 256) |
+| GET | `/subnets/unassigned` | Devices outside every subnet |
+| POST | `/subnets/:id/scan` | Start a sweep: `202`, or `409` if one is running |
+| GET | `/subnets/:id/scan` | Sweep status and last result |
+| POST | `/ipam/dhcp/leases` | dnsmasq lease file as the raw body or multipart `file`; `?source=` names the snapshot; bearer token if `IPAM_LEASES_TOKEN` is set |
+| GET | `/ipam/dhcp/status` | Watched files, last imports, active leases per source |
+| POST | `/ipam/probe` | `{ip}` inside a defined subnet → ping, PTR, open exporter ports, suggested monitors, device type and name, plus the existing device if any |
+| POST | `/ipam/monitor` | **Add to monitoring**, in one transaction (see below) |
 
-The export organizes targets by monitor type:
-- `linux_node_exporter/` - Linux servers with Node Exporter
-- `freebsd_node_exporter/` - FreeBSD servers with Node Exporter
-- `snmp/` - SNMP-monitored devices
-- `icmp/` - ICMP-only devices
-- And more...
+`POST /ipam/monitor` handles both cases:
+- With `device_id`, it turns monitoring on and adds `monitors`, skipping duplicates.
+- Without one, it creates a device at `ip` with `monitors`. `name`, `device_type`, `deviceFunction`, `location_id`, and `tags` are optional.
+- It returns `201` on create, or `409` if the IP is already used.
 
-### Searching and Filtering
+### Prometheus
 
-- **Quick Search**: Use the search box to find devices by name, IP, device function, serial number, networks, interface types, or PoE standards
-- **Advanced Search**: Click the "Filters" button to expand advanced filtering options:
-  - Filter by device type, vendor, model, or location
-  - Filter by monitoring status (enabled/disabled)
-  - Filter by PoE powered status
-  - Filter by IP address presence
-  - Combine multiple filters for precise results
-- **Filter Chips**: Active filters are displayed as removable chips above the results
-- **Dark Mode Friendly**: Advanced search dropdown and chips adapt to dark mode
-- **Device Type Filter**: Select a device type from the dropdown to filter devices
-- **View Modes**: Toggle between full detail view and condensed list view
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/prometheus/sd` | HTTP SD payload; `?group=`; bearer token if `PROMETHEUS_SD_TOKEN` is set |
+| GET | `/prometheus/sd/groups` | Groups with targets, with counts |
+| GET | `/prometheus/sd/scrape-config` | Generated YAML; `base_url`, `blackbox`, `snmp_exporter`, `all=true` |
+| GET | `/prometheus/status` | Live per-device status; `?refresh=true` skips the cache |
+| GET | `/prometheus/export` | `?mode=write` (to disk) or `?mode=download` (ZIP) |
 
-### Bulk Operations
+### Exports
 
-- **Bulk Import**: 
-  - Import devices from JSON array or CSV file
-  - CSV format: name, device_type, ip_address, deviceFunction, vendor, model, location, serial_number, networks, interface_type, poe_powered, poe_standards, monitoring_enabled
-  - JSON format: Array of device objects matching the API schema
-  - Results show successful imports and failed items with error details
-  
-- **Bulk Export**:
-  - Export all devices or filter by device type
-  - Choose JSON or CSV format
-  - Files are automatically downloaded with descriptive filenames
-  
-- **Bulk Delete**:
-  - Delete multiple devices by entering comma-separated IDs
-  - Maximum 100 devices per operation
-  - Confirmation dialog prevents accidental deletions
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/export/ansible` | Dynamic inventory JSON; `?host=` for one host; `?format=yaml` for a static file; `?include_all_types=true` |
+| GET | `/export/ansible/script` | The standalone inventory script |
+| GET | `/export/netbox` | ZIP of import CSVs; `?file=` for one; `?summary=true` for row counts; `?default_site=` |
 
-### Device Actions
+Both accept `?tag=` (all must match) and `?monitoring_enabled=true`.
 
-- **Edit**: Click the edit icon to modify device details
-- **Clone**: Click the clone icon to duplicate a device (useful for similar devices)
-- **Toggle Monitoring**: Click the check/X icon to enable/disable monitoring
-- **Delete**: Click the trash icon to remove a device (with confirmation)
-- **View History**: In the device modal, the History tab shows per-device change log with field-level diffs; use **Other Actions → History** for a global, paginated history across all devices (50/100/250/500/all)
+### Webhooks
 
-## 🔌 API Documentation
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/webhooks` | Webhooks (secrets never returned) and event names |
+| POST | `/webhooks` | `name`, `url`, `events` (list, or `["*"]`), `enabled`, `secret` or `generate_secret: true` |
+| PUT | `/webhooks/:id` | `secret: ""` clears it; `generate_secret: true` rotates it (new secret returned once) |
+| DELETE | `/webhooks/:id` | |
+| POST | `/webhooks/:id/test` | Sends a `ping` and returns the result |
+| GET | `/webhooks/:id/deliveries` | Last 50 attempts |
 
-### Base URL
+### Bulk and health
 
-All API endpoints are prefixed with `/api`
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/bulk/devices/import` | JSON array body, or multipart CSV `file` |
+| GET | `/bulk/devices/export` | `?format=json\|csv`, `?type=` |
+| POST | `/bulk/devices/delete` | `{"device_ids": [...]}`, up to 100 |
+| GET | `/health` | `{status, timestamp, service}` |
+| GET | `/health/detailed` | Database status, device count, CPU, memory, and disk |
 
-### Endpoints
-
-#### Devices
-
-- `GET /api/devices` - Get all devices (optional `?type=<device_type>` filter)
-- `GET /api/devices/<id>` - Get device by ID
-- `GET /api/devices/<id>/history` - Get device change history (supports `limit`/`offset`)
-- `GET /api/devices/history` - Get change history across all devices (supports `limit`/`offset`, accepts `limit=all`)
-- `POST /api/devices` - Create new device
-- `PUT /api/devices/<id>` - Update device
-- `DELETE /api/devices/<id>` - Delete device
-
-#### Monitors
-
-- `POST /api/devices/<device_id>/monitors` - Add monitor to device
-- `PUT /api/monitors/<id>` - Update monitor
-- `DELETE /api/monitors/<id>` - Delete monitor
-
-#### Vendors
-
-- `GET /api/vendors` - Get all vendors
-- `POST /api/vendors` - Create vendor
-- `PUT /api/vendors/<id>` - Update vendor
-- `DELETE /api/vendors/<id>` - Delete vendor
-
-#### Models
-
-- `GET /api/models` - Get all models (optional `?vendor_id=<id>` filter)
-- `POST /api/models` - Create model
-- `PUT /api/models/<id>` - Update model
-- `DELETE /api/models/<id>` - Delete model
-
-#### Locations
-
-- `GET /api/locations` - Get all locations
-- `POST /api/locations` - Create location
-- `PUT /api/locations/<id>` - Update location
-- `DELETE /api/locations/<id>` - Delete location
-
-#### Statistics
-
-- `GET /api/stats` - Get dashboard statistics
-
-#### Prometheus Export
-
-- `GET /api/prometheus/export?mode=write` - Write Prometheus configs to disk
-- `GET /api/prometheus/export?mode=download` - Download Prometheus configs as ZIP
-- `GET /api/prometheus/sd[?group=name]` - Prometheus HTTP service discovery payload (bearer token if `PROMETHEUS_SD_TOKEN` is set)
-- `GET /api/prometheus/sd/groups` - Groups that currently have targets, with counts
-- `GET /api/prometheus/sd/scrape-config` - Generated `scrape_configs` YAML (`base_url`, `blackbox`, `snmp_exporter`, `all=true`)
-- `GET /api/prometheus/status[?refresh=true]` - Live per-device status from `PROMETHEUS_URL`
-
-#### Bulk Operations
-
-- `POST /api/bulk/devices/import` - Import devices from JSON array or CSV file
-  - JSON: Send array of device objects in request body
-  - CSV: Send multipart/form-data with `file` field
-- `GET /api/bulk/devices/export?format=json&type=<device_type>` - Export devices
-  - `format`: `json` or `csv`
-  - `type`: Optional device type filter
-- `POST /api/bulk/devices/delete` - Bulk delete devices
-  - Body: `{ "device_ids": [1, 2, 3, ...] }`
-  - Maximum 100 devices per request
-
-#### Advanced Search
-
-- `GET /api/search/devices` - Advanced search with multiple filters
-  - Query parameters:
-    - `q`: Search term (searches across multiple fields)
-    - `type`: Device type filter
-    - `vendor_id`: Filter by vendor ID
-    - `model_id`: Filter by model ID
-    - `location_id`: Filter by location ID
-    - `monitoring_enabled`: `true` or `false`
-    - `poe_powered`: `true` or `false`
-    - `has_ip`: `true` or `false`
-  - Returns: `{ "results": [...], "count": N, "filters_applied": {...} }`
-
-#### Health Checks
-
-- `GET /api/health` - Basic health check
-  - Returns: `{ "status": "healthy", "timestamp": "...", "service": "..." }`
-- `GET /api/health/detailed` - Detailed health check with system metrics
-  - Returns: Database status, system metrics (CPU, memory, disk), device counts
-  - Requires psutil for system metrics (gracefully degrades if unavailable)
-
-#### Discovery
-- `POST /api/discovery` - Probe IPs/hostnames/ranges/CIDRs with ICMP + reverse DNS
-  - Body supports `targets` (array or comma/newline string), `range` (`192.168.1.10-192.168.1.20`), and `cidr` (`192.168.1.0/28`)
-  - Returns reachability summary, RTT (ms), resolved IP, and PTR hostname when available
-
-#### Tags & Relationships
-- `GET /api/devices?tag=prod&tag=storage` - Filter devices by tags (all must match); also `tag` on `/api/search/devices`
-- Device create/update accept `tags` as a list or comma-separated string
-- `GET /api/tags` - All tags with device counts
-- `PUT /api/tags/:id` - Rename (renaming onto an existing tag merges them)
-- `DELETE /api/tags/:id` - Delete a tag and remove it from devices
-- `GET /api/devices/:id/links` - Outgoing and incoming relationships
-- `POST /api/devices/:id/links` - Create (`target_id`, `link_type`: `runs_on` | `connected_to` | `powered_by`, `port`, `notes`)
-- `PUT /api/links/:id` - Update `port` / `notes`
-- `DELETE /api/links/:id` - Remove a relationship
-- `GET /api/devices/:id/impact[?types=runs_on,powered_by]` - Everything that transitively depends on a device
-
-#### Webhooks
-- `GET /api/webhooks` - Webhooks (secrets never returned) and the list of event names
-- `POST /api/webhooks` - Create (`name`, `url`, `events` list or `["*"]`, `enabled`, `secret` or `generate_secret: true`)
-- `PUT /api/webhooks/:id` - Update; `secret: ""` clears, `generate_secret: true` rotates (new secret returned once)
-- `DELETE /api/webhooks/:id` - Delete
-- `POST /api/webhooks/:id/test` - Send a `ping` now and return the result
-- `GET /api/webhooks/:id/deliveries` - Last 50 delivery attempts
-
-#### Exports
-- `GET /api/export/ansible` - Dynamic inventory JSON (`--list` shape); `?host=<name>` for one host's vars; `?format=yaml` for a static inventory
-- `GET /api/export/ansible/script` - The standalone inventory script
-- `GET /api/export/netbox` - ZIP of NetBox import CSVs; `?file=<key>` for one CSV; `?summary=true` for row counts; `?default_site=`
-- Both accept `?tag=` (all must match) and `?monitoring_enabled=true`; Ansible also takes `?include_all_types=true`
-
-#### Subnets (IPAM)
-- `GET /api/subnets` - List subnets with utilization summaries
-- `POST /api/subnets` - Create a subnet (`cidr` required; `name`, `vlan_id`, `gateway`, `reserved_ranges`, `location_id`, `description` optional)
-- `GET /api/subnets/:id` - Utilization detail: summary, used addresses, free ranges, conflicts, and per-address status (≤ 4,096 addresses)
-- `PUT /api/subnets/:id` - Update a subnet
-- `DELETE /api/subnets/:id` - Delete a subnet (devices are untouched)
-- `GET /api/subnets/:id/next-free?count=N` - Next N free addresses (max 256)
-- `GET /api/subnets/unassigned` - Devices whose IP isn't inside any defined subnet
-- `PUT /api/subnets/:id` also accepts `scan_enabled` and `scan_interval_minutes` (5–10080)
-- `POST /api/subnets/:id/scan` - Start a ping sweep now (202; 409 if one is running)
-- `GET /api/subnets/:id/scan` - Sweep status and last result
-- `POST /api/ipam/dhcp/leases[?source=name]` - Import a dnsmasq lease file (raw body or multipart `file`)
-- `GET /api/ipam/dhcp/status` - Watched files, last import results, active leases per source
-- `POST /api/ipam/probe` - `{ip}`: ping, PTR and exporter-port check for an address inside a defined subnet, with suggested monitors, device type and name, plus the existing device if any
-- `POST /api/ipam/monitor` - Add to monitoring in one transaction. With `device_id`: turn monitoring on and add `monitors` (duplicates skipped). Without: create a device at `ip` (`name`, `device_type`, `deviceFunction`, `location_id`, `tags` optional) with `monitors` (201; 409 if the IP is already used)
-
-### API Response Format
-
-All API responses follow a standardized format:
-
-**Success Response:**
-```json
-{
-  "success": true,
-  "data": {...},
-  "message": "Device created successfully"
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "error": "Validation error",
-  "details": {
-    "name": ["Missing data for required field."],
-    "device_type": ["Invalid device type."]
-  },
-  "error_code": "VALIDATION_ERROR"
-}
-```
-
-### Example API Request
+### Example
 
 ```bash
-# Create a device
 curl -X POST http://localhost:5000/api/devices \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "Web Server 01",
-    "device_type": "linux_server_physical",
-    "ip_address": "192.168.1.10",
-    "deviceFunction": "Web Server",
-    "vendor_id": 1,
-    "model_id": 1,
-    "location_id": 1,
-    "serial_number": "SN123456",
-    "networks": "LAN",
-    "monitoring_enabled": true
-  }'
+  -d '{"name": "pve01", "device_type": "linux_server_physical", "ip_address": "192.168.1.10",
+       "deviceFunction": "Proxmox node", "tags": ["prod", "proxmox"]}'
 
-# Response:
-# {
-#   "success": true,
-#   "data": {
-#     "id": 1,
-#     "name": "Web Server 01",
-#     ...
-#   },
-#   "message": "Device created successfully"
-# }
+curl -X POST http://localhost:5000/api/devices/1/monitors \
+  -H "Content-Type: application/json" -d '{"monitor_type": "node_exporter"}'
 ```
 
-## 🛠️ Development
+### Rate limits
 
-### Setting Up Development Environment
+Limits are per endpoint and per client address:
 
-1. **Backend Development:**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   export FLASK_ENV=development
-   export DATABASE_PATH=./homelab.db
-   export PROMETHEUS_EXPORT_PATH=./prometheus_targets
-   
-   # Initialize database migrations (first time only)
-   flask db upgrade
-   
-   # Run the application
-   python app.py
-   ```
+| Endpoints | Limit |
+|---|---|
+| Anything not listed below (mostly reads) | 50 per minute and 200 per hour |
+| Device create, update, delete; discovery | 20 per minute |
+| Vendor, model, location, monitor, subnet, and webhook writes; tag rename and delete; IPAM probe and add to monitoring | 30 per minute |
+| Relationship writes; search; history; Ansible export; lease upload | 60 per minute |
+| NetBox export | 20 per minute |
+| Prometheus file export; sweeps; webhook tests; bulk import and export | 10 per minute |
+| Bulk delete | 5 per minute |
+| Prometheus SD | 600 per minute |
+| Prometheus status | 120 per minute |
 
-2. **Frontend Development:**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+## Upgrading
 
-### Code Structure
+Pull and restart. Migrations run automatically on startup unless `AUTO_MIGRATE=false`.
 
-- **Backend**: Modular Flask architecture with blueprints, services, and models separation
-  - Routes organized by domain (devices, monitors, admin, bulk, search, health, discovery, subnets, links, prometheus, exports, webhooks)
-  - Business logic in services layer (IPAM analysis, ping sweeps, DHCP leases, Prometheus SD and status, exports, webhooks)
-  - Database models in separate module
-  - Input validation via Marshmallow schemas
-  - Custom exception handling
-- **Frontend**: Component-based React architecture with service layer for API calls
-  - Components organized by feature (devices, admin, bulk, search, discovery, ipam, prometheus, exports, history, common)
-  - Centralized API service layer
-  - Utility functions for common operations
-- **Styling**: Tailwind CSS utility classes with custom CSS for iOS optimizations
-  - Mobile-first responsive design
-  - Touch-friendly controls (44px minimum)
-  - Safe area support for notched devices
-
-### Building for Production
-
-**Using Pre-built Images (Recommended):**
-The project uses GitHub Actions to automatically build and publish images to GitHub Container Registry. Simply use the pre-built images as shown in the [Quick Start](#-quick-start) section.
-
-**Building Locally:**
-
-**Frontend:**
 ```bash
-cd frontend
-npm run build
+docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py   # back up first
+docker compose pull && docker compose up -d
 ```
 
-**Docker:**
-```bash
-docker compose build --no-cache
-```
+### Upgrading to 2.1
 
-**Building and Publishing via CI/CD:**
-Images are automatically built and published when you:
-- Push to the `main` branch
-- Create a git tag (e.g., `git tag v2.0.0 && git push --tags`)
+2.1 is drop-in from 2.0. Nothing was removed from the API.
 
-See the [CI/CD Pipeline](#-cicd-pipeline) section for more details.
-
-### Testing
-
-The backend has a pytest suite (100+ tests):
-
-**Backend Tests:**
-```bash
-cd backend
-pytest
-```
-
-`tests/conftest.py` points the app at a throwaway SQLite file before it's imported, so running the suite never touches your real `DATABASE_PATH`. Webhooks deliver inline during tests.
-
-**Test Structure:**
-- `tests/test_models.py` - Unit tests for database models
-- `tests/test_api.py` - Integration tests for core API endpoints
-- `tests/test_subnets.py` - IPAM subnets, utilization, free ranges
-- `tests/test_ipam_discovery.py` - Ping sweeps, dnsmasq lease import, observation-aware IPAM
-- `tests/test_ipam_reverse_dns.py` - PTR lookups in sweeps, DNS-only status, PTR markers
-- `tests/test_prometheus.py` - HTTP service discovery, scrape-config generation, live status
-- `tests/test_tags_links.py` - Tags, relationships, impact analysis
-- `tests/test_exports.py` - Ansible inventory and NetBox CSV
-- `tests/test_webhooks.py` - Webhooks against a real local HTTP receiver
-- `tests/test_migrations.py` - Boots the app in production mode on an empty database
-
-**Adding Tests:**
-- Follow pytest conventions
-- Use pytest-flask fixtures for Flask app context
-- Test both success and error cases
-- Mock external dependencies when appropriate
-
-**Future Testing Enhancements:**
-- Frontend component tests with React Testing Library
-- E2E tests with Playwright or Cypress
-- Performance and load testing
-
-## 🐳 Docker Deployment
-
-### Production Deployment
-
-1. **Clone and configure:**
-   ```bash
-   git clone <repository-url>
-   cd homelab-inventory
-   cp docker-compose.yaml.example docker-compose.yaml
-   ```
-
-2. **Review and customize `docker-compose.yaml`** as needed
-   - Update image names to match your GitHub username/organization (if different)
-   - Set `SECRET_KEY` environment variable (important for production!)
-   - Configure `CORS_ORIGINS` to restrict allowed origins
-   - Adjust backup retention days if needed
-
-3. **Pull and start the containers:**
-   ```bash
-   docker compose pull
-   docker compose up -d
-   ```
-
-   The pre-built images will be pulled from GitHub Container Registry automatically.
-
-4. **Check health status:**
-   ```bash
-   docker compose ps
-   # Should show "healthy" status for backend and frontend
-   ```
-
-5. **Check logs:**
-   ```bash
-   docker compose logs -f
-   ```
-
-### Health Checks
-
-The Docker Compose configuration includes health checks for both services:
-- **Backend**: Checks `/api/health` endpoint every 30 seconds
-- **Frontend**: Verifies web server is responding
-- Services wait for backend to be healthy before starting
-- Unhealthy containers are automatically restarted
-
-### Updating the Application
-
-1. **Pull latest images:**
-   ```bash
-   docker compose pull
-   ```
-
-2. **Restart containers with new images:**
-   ```bash
-   docker compose up -d
-   ```
-
-   Or in one command:
-   ```bash
-   docker compose pull && docker compose up -d
-   ```
-
-Database migrations run automatically on startup (unless `AUTO_MIGRATE=false`). To stay on a major version, pin the image tag, e.g. `ghcr.io/pyrodex/homelab-inventory/backend:2`.
+1. **One additive migration** adds PTR columns to IPAM observations.
+2. **Reverse DNS in sweeps.**
+   - Sweeps now look up PTR records for every address in the subnet. That's one DNS query per address per sweep.
+   - Set `IPAM_SWEEP_PTR=false` to look up only addresses that answer.
+3. **Free addresses may change.**
+   - After the first sweep, an address with a PTR record but no device, ping reply, or lease counts as in use and shows in rose.
+   - It's no longer offered as free or next-free. Set `IPAM_PTR_BLOCKS_FREE=false` to keep the old behavior.
+4. **Frontend on Tailwind CSS 4.** The layout is unchanged, and the colors are slightly more saturated.
 
 ### Upgrading to 2.0
 
-2.0 is a drop-in upgrade: no API endpoints were removed and no configuration is required. A few things are worth knowing:
+2.0 was drop-in from 1.x.
 
-1. **Back up first.** Four schema migrations run on first start (subnets, tags/links, IPAM observations, webhooks). They're additive, but take a backup: `docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py`.
-2. **New Prometheus target labels.** Exported and discovered targets now carry `inventory_device_id` (always), plus `tags` and `runs_on` when set. New labels mean Prometheus starts **new time series** for those targets: graphs keyed on the full label set show a break at the upgrade, and alerts that match on exact label sets may need a look. If you'd rather not, drop them in the job's `relabel_configs` with `action: labeldrop` and `regex: inventory_device_id|tags|runs_on`.
-3. **Devices without an IP** are now skipped in Prometheus exports (they previously caused the export to fail).
-4. **Discovery is faster.** Probes run in parallel, and the ping timeout is now passed in the right unit on Linux, so unreachable hosts fail in about a second instead of hanging until the subprocess timeout.
-5. **Optional new features**, all off or empty until you configure them:
-   - `PROMETHEUS_URL` for live status
-   - `PROMETHEUS_SD_TOKEN` to protect service discovery
-   - `DNSMASQ_LEASES_PATH` / `IPAM_LEASES_TOKEN` for DHCP leases
-   - ping sweeps, toggled per subnet in the UI
-   - webhooks, configured under Admin
-6. **Background workers.** The backend now runs a sweep scheduler and lease watcher. Set `IPAM_BACKGROUND_WORKERS=false` to disable them.
+1. **Back up first.** Four additive migrations run on first start: subnets, tags and links, IPAM observations, and webhooks.
+2. **New Prometheus target labels.**
+   - Every target gains `inventory_device_id`, plus `tags` and `runs_on` when set.
+   - New labels start **new time series**, so graphs show a break at the upgrade, and alerts that match exact label sets may need a look.
+   - To avoid that, drop them in the job's `relabel_configs` with `action: labeldrop` and `regex: inventory_device_id|tags|runs_on`.
+3. **Devices without an IP** are skipped in Prometheus exports. Before, they made the export fail.
+4. **Background workers.** The backend runs a sweep scheduler, a lease watcher, and a webhook dispatcher in-process. `IPAM_BACKGROUND_WORKERS=false` disables the first two.
 
-> **Note:** New images are automatically built and pushed to GitHub Container Registry via GitHub Actions when code is pushed to the `main` branch or when tags are created. See [CI/CD Pipeline](#-cicd-pipeline) section below.
+## Backups
 
-## 🔄 CI/CD Pipeline
-
-The project includes a GitHub Actions workflow that automatically builds and publishes Docker images to GitHub Container Registry (ghcr.io).
-
-### Automated Builds
-
-The CI/CD pipeline automatically:
-
-- **Builds images** for both backend and frontend on every push to `main`
-- **Tags images** with:
-  - `latest` for the main branch
-  - Version tags (e.g., `v1.0.0`, `1.0`, `1`) when git tags are created
-  - Branch names for feature branches
-  - SHA-based tags for traceability
-- **Pushes to GitHub Container Registry** at `ghcr.io/pyrodex/homelab-inventory/backend` and `ghcr.io/pyrodex/homelab-inventory/frontend` (update the namespace if you publish from a fork)
-- **Uses build cache** for faster subsequent builds
-
-### Workflow Triggers
-
-The workflow runs automatically on:
-- Push to `main` branch
-- Git tags (e.g., `v1.0.0`)
-- Pull requests (builds but doesn't push)
-- Manual workflow dispatch
-
-### Using Pre-built Images
-
-The `docker-compose.yaml.example` file is configured to use the pre-built images from GitHub Container Registry. Simply copy it to `docker-compose.yaml` and run:
+The backend container runs `backend/scripts/backup_db.py` on `BACKUP_SCHEDULE` (daily at 02:00 by default).
+- It uses SQLite's online backup API.
+- Backups go to `BACKUP_DIRECTORY` as `homelab_backup_YYYYMMDD_HHMMSS.db`.
+- Files older than `BACKUP_RETENTION_DAYS` are deleted.
 
 ```bash
-docker compose up -d
-```
-
-The images will be automatically pulled from GitHub Container Registry.
-
-### Image Names
-
-- **Backend**: `ghcr.io/pyrodex/homelab-inventory/backend:latest`
-- **Frontend**: `ghcr.io/pyrodex/homelab-inventory/frontend:latest`
-
-If you publish under a different namespace (e.g., your fork), update the image names in `docker-compose.yaml`.
-
-### Viewing Builds
-
-- Check the **Actions** tab in your GitHub repository to see build status
-- View published packages in the **Packages** section of your repository
-- Images are public by default (for public repositories) or can be configured with appropriate permissions
-
-### Local Development
-
-For local development and testing, you can still build images locally:
-
-```bash
-docker compose -f docker-compose.yaml build
-```
-
-Update `docker-compose.yaml` to use `build:` instead of `image:` if you want to build locally or push to your own registry.
-
-## 💾 Database Backup & Restore
-
-The Homelab Inventory application includes comprehensive automated database backup functionality to protect your data.
-
-> **Note:** For a standalone backup reference document, see [BACKUP_README.md](BACKUP_README.md).
-
-### Backup Features
-
-- **Timestamped Backups**: Each backup includes a timestamp in the filename (e.g., `homelab_backup_20241120_143022.db`)
-- **Automatic Cleanup**: Removes backups older than the retention period (default: 30 days)
-- **SQLite Backup API**: Uses SQLite's native backup API for consistency and reliability
-- **Statistics**: Reports backup count, total size, oldest and newest backups
-- **Zero Configuration**: Automatic daily backups enabled by default in Docker Compose setup
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BACKUP_DIRECTORY` | Directory for backups | `/app/data/backups` |
-| `BACKUP_RETENTION_DAYS` | Number of days to keep backups | `30` |
-| `BACKUP_SCHEDULE` | Cron schedule for automatic backups | `0 2 * * *` (daily at 2 AM) |
-
-### Automated Backups
-
-**Automatic Daily Backups (Docker Compose):**
-
-Backups are automatically configured when using Docker Compose! The container includes a cron daemon that runs daily backups automatically.
-
-Configure via environment variables in your `docker-compose.yaml`:
-
-```yaml
-services:
-  backend:
-    environment:
-      - BACKUP_DIRECTORY=/app/data/backups
-      - BACKUP_RETENTION_DAYS=30
-      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM (cron format)
-```
-
-**Cron Schedule Format Examples:**
-- `0 2 * * *` - Daily at 2:00 AM (default)
-- `0 */6 * * *` - Every 6 hours
-- `0 0 * * 0` - Weekly on Sunday at midnight
-- `*/30 * * * *` - Every 30 minutes
-
-The backup runs automatically in the background. Check logs with:
-```bash
-docker compose logs backend | grep -i backup
-```
-
-### Manual Backup
-
-Run the backup script manually:
-
-```bash
-# Inside Docker container
+# Back up now
 docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py
 
-# Or if running locally
-python3 backend/scripts/backup_db.py
+# Restore
+docker compose stop backend
+cp data/homelab.db data/homelab.db.before-restore
+cp data/backups/homelab_backup_YYYYMMDD_HHMMSS.db data/homelab.db
+docker compose start backend
 ```
 
-**Alternative Manual Methods:**
+Check backup logs with `docker compose logs backend | grep -i backup`. [BACKUP_README.md](BACKUP_README.md) covers scheduling alternatives (such as a systemd timer), verification, and troubleshooting.
+
+## Security
+
+> **There is no built-in authentication.** Anyone who can reach the app can read and change the inventory. That includes adding a webhook that points anywhere on your network, which the app can reach. Put it behind your reverse proxy's authentication (Authelia, Authentik, oauth2-proxy, …) and TLS.
+
+What's in place:
+- **Input validation** on every write: Marshmallow schemas check IPs, hostnames, ports, enum values, and lengths.
+- **Rate limiting** (see [Rate limits](#rate-limits)).
+- **Optional bearer tokens** for machine endpoints: `PROMETHEUS_SD_TOKEN` and `IPAM_LEASES_TOKEN`. Both are compared in constant time.
+- **Webhook hardening**:
+  - HMAC-SHA256 signatures
+  - secrets never returned by the API, and shown once on creation
+  - redirects not followed
+  - credentials in URLs rejected
+- **Scoped probing**: IPAM probes only addresses inside your defined subnets, and Discovery caps a request at 256 targets.
+- **Security headers** set by the bundled nginx: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`.
+
+Recommendations:
+- Remove `sqlite-web` from the compose file, or bind it to `127.0.0.1`. It publishes the raw database with no authentication.
+- Keep `./data` readable only by the container user. It holds the database and backups, including webhook secrets.
+- Restrict `CORS_ORIGINS` if you expose the API to other origins.
+
+## Development
+
+### Local setup
+
+Backend (Python 3.13):
+
 ```bash
-# Copy database directly
-cp data/homelab.db data/homelab.db.backup
-
-# Or use Docker
-docker exec homelab-inventory-backend cp /app/data/homelab.db /app/data/homelab.db.backup
+cd backend
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+export FLASK_ENV=development DATABASE_PATH=./homelab.db PROMETHEUS_EXPORT_PATH=./prometheus_targets
+python app.py            # http://localhost:5000; migrations and background workers start automatically
 ```
 
-### Restoring from Backup
+Frontend (Node 20–22):
 
-1. **Stop the application:**
-   ```bash
-   docker compose stop backend
-   ```
-
-2. **Backup current database (safety):**
-   ```bash
-   cp data/homelab.db data/homelab.db.current
-   ```
-
-3. **Restore from backup:**
-   ```bash
-   cp data/backups/homelab_backup_YYYYMMDD_HHMMSS.db data/homelab.db
-   ```
-
-4. **Set correct permissions:**
-   ```bash
-   chmod 644 data/homelab.db
-   ```
-
-5. **Start the application:**
-   ```bash
-   docker compose start backend
-   ```
-
-### Backup Verification
-
-The backup script logs:
-- Backup creation success/failure
-- Backup file size
-- Cleanup operations
-- Statistics (count, total size, oldest/newest)
-
-Check logs:
 ```bash
-docker compose logs backend | grep -i backup
+cd frontend
+npm install
+npm run dev              # http://localhost:3000; /api is proxied to localhost:5000
+npm run build            # production build into dist/
 ```
 
-### Backup Best Practices
+To create a migration after changing models: `flask db migrate -m "description"`, then review the file and run `flask db upgrade`. Keep migrations additive and idempotent; `tests/test_migrations.py` boots the app on an empty database in production mode.
 
-1. **Regular Backups**: Schedule daily backups during low-traffic hours
-2. **Offsite Storage**: Copy backups to external storage or cloud storage
-3. **Test Restores**: Periodically test restoring from backups
-4. **Monitor Disk Space**: Ensure backup directory has sufficient space
-5. **Retention Policy**: Adjust `BACKUP_RETENTION_DAYS` based on your needs
+### Tests
 
-### Alternative Scheduling Methods
-
-#### Using Systemd Timer (Host System)
-
-Create `/etc/systemd/system/homelab-backup.service`:
-```ini
-[Unit]
-Description=Homelab Inventory Database Backup
-After=network.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/docker exec homelab-inventory-backend python3 /app/scripts/backup_db.py
-```
-
-Create `/etc/systemd/system/homelab-backup.timer`:
-```ini
-[Unit]
-Description=Daily backup for Homelab Inventory
-Requires=homelab-backup.service
-
-[Timer]
-OnCalendar=daily
-OnCalendar=02:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-Enable and start:
 ```bash
-sudo systemctl enable homelab-backup.timer
-sudo systemctl start homelab-backup.timer
+cd backend
+pytest                   # 131 tests
 ```
 
-### Backup Troubleshooting
+`tests/conftest.py` points the app at a throwaway database before it's imported, so tests never touch your real `DATABASE_PATH`. Network-facing code is tested against real local listeners, with ping and DNS stubbed.
 
-**Backup fails:**
-- Check database path is correct
-- Verify write permissions on backup directory
-- Check disk space availability
-- Review application logs: `docker compose logs backend | grep -i backup`
+| File | Covers |
+|---|---|
+| `test_api.py`, `test_models.py` | Core API and models |
+| `test_subnets.py` | Subnets, utilization, free ranges |
+| `test_ipam_discovery.py` | Ping sweeps, dnsmasq leases, observation-aware IPAM |
+| `test_ipam_reverse_dns.py` | PTR lookups, DNS-only status, PTR markers |
+| `test_add_to_monitoring.py` | IPAM probe and add to monitoring |
+| `test_prometheus.py` | HTTP SD, scrape-config generation, live status |
+| `test_tags_links.py` | Tags, relationships, impact analysis |
+| `test_exports.py` | Ansible inventory and NetBox CSV |
+| `test_webhooks.py` | Webhooks against a real local receiver |
+| `test_migrations.py` | Fresh production boot on an empty database |
 
-**Backups not being cleaned up:**
-- Verify `BACKUP_RETENTION_DAYS` is set correctly
-- Check backup directory permissions
-- Review script logs for errors
+### Project layout
 
-**Cannot restore backup:**
-- Ensure application is stopped before restoring
-- Verify backup file is not corrupted
-- Check file permissions after restore
+```
+homelab-inventory/
+├── backend/
+│   ├── app.py               # Flask app, error handlers, startup (migrations, workers)
+│   ├── config.py            # Environment configuration and validation
+│   ├── models.py            # SQLAlchemy models
+│   ├── validators.py        # Marshmallow schemas
+│   ├── routes/              # One blueprint per area (devices, subnets, onboarding, prometheus, …)
+│   ├── services/            # IPAM, sweeps, DHCP leases, probes, Prometheus, exports, webhooks
+│   ├── utils/               # History diffs, tags, response helpers
+│   ├── migrations/          # Alembic migrations
+│   ├── scripts/             # Entrypoint, backups, Ansible inventory script
+│   └── tests/
+├── frontend/
+│   ├── src/components/      # Feature folders: devices, ipam, prometheus, exports, admin, …
+│   ├── src/services/api.js  # API client
+│   ├── src/index.css        # Tailwind 4 configuration
+│   └── nginx.conf           # Serves the UI and proxies /api
+├── contrib/ansible/         # Ansible inventory documentation
+├── screenshots/             # Light and dark galleries
+├── docker-compose.yaml.example
+├── BACKUP_README.md
+└── CHANGELOG.md
+```
 
-**Backup Location:**
-Backups are stored in `data/backups/` directory with timestamped filenames (e.g., `homelab_backup_20241120_143022.db`).
+### CI and releases
 
-### Data Persistence
+GitHub Actions (`.github/workflows/docker-build.yml`) builds both images:
+- **Pushes to any branch** build and push images tagged with the branch name, the commit SHA, and `latest` (on `main`).
+- **Pull requests to `main`** build without pushing.
+- **`v*` tags** also publish `X.Y.Z`, `X.Y`, and `X`.
 
-Ensure volumes are properly mounted:
-- `./data:/app/data` - Database storage
-- `./targets:/app/prometheus_targets` - Prometheus export directory
+CodeQL runs separately. CI doesn't run the test suite, so run `pytest` and `npm run build` before opening a PR.
 
-## 🔒 Security Features
+To cut a release:
+1. Update `frontend/package.json` and `CHANGELOG.md`, and merge to `main`.
+2. Create the release, which also creates the tag and triggers the versioned image build:
 
-### Implemented Security Measures
+```bash
+gh release create v2.1.0 --target main --title "v2.1.0" --notes-file <(awk '/^## \[2.1.0\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md)
+```
 
-- **Input Validation & Sanitization**: All API endpoints use Marshmallow schemas to validate and sanitize input data
-  - IP addresses and hostnames are validated
-  - Port numbers are validated (1-65535)
-  - String fields are sanitized to prevent injection attacks
-  - Device types, monitor types, and other enums are validated against allowed values
+## Troubleshooting
 
-- **Rate Limiting**: Flask-Limiter is configured to prevent abuse
-  - Default limits: 200 requests/hour, 50 requests/minute per IP
-  - Write operations (POST/PUT/DELETE): 20-30 requests/minute
-  - Bulk operations: 5-10 requests/minute (more restrictive)
-  - Prometheus export: 10 requests/minute
-  - Search operations: 60 requests/minute
-  - Rate limit errors return HTTP 429 with descriptive messages
+**The UI loads but shows no data.**
+- Check `docker compose ps`: both services should be healthy.
+- Check `curl http://localhost:5000/api/health` and `docker compose logs backend`.
 
-- **CORS Configuration**: Configurable CORS origins via environment variable
-  - Development: Set `CORS_ORIGINS=*` to allow all origins
-  - Production: Set `CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com` to restrict
+**"Too many requests" (HTTP 429).**
+- Requests reach the backend through the frontend's nginx, so all browsers share one client address and one set of limits.
+- Busy multi-user setups can hit the 200-per-hour default on read endpoints.
+- Wait out the window, or adjust `RATELIMIT_DEFAULT_LIMITS` in `backend/config.py` for your deployment.
 
-- **Error Handling**: Comprehensive error handling with proper HTTP status codes
-  - Validation errors return 400 with detailed messages
-  - Database errors are logged but don't expose sensitive information
-  - Rate limit errors return 429
+**Database is read-only, or the backend exits at startup.**
+- The container needs write access to `./data`.
+- In production, a failed migration stops startup on purpose; the error is in the logs.
 
-- **Optional Tokens for Machine Endpoints**: `PROMETHEUS_SD_TOKEN` (service discovery) and `IPAM_LEASES_TOKEN` (lease uploads) require a bearer token, checked in constant time
+**A ping sweep finds nothing.**
+- The backend sends ICMP from inside its container, so it needs a route to the subnet.
+- Sweeps are IPv4-only and limited to `IPAM_SCAN_MAX_HOSTS`.
 
-- **Webhook Hardening**: HMAC-SHA256 signatures (`X-Hub-Signature-256`), secrets never returned by the API and shown once on creation, redirects not followed, and credentials in URLs rejected
+**Rose cells everywhere after upgrading to 2.1.**
+- Those are stale PTR records; clean them up in DNS.
+- Or set `IPAM_PTR_BLOCKS_FREE=false` so they still count as free.
 
-### Security Recommendations
+**Live status doesn't show.**
+- Check `PROMETHEUS_URL` and its credentials. The Prometheus SD & Status window shows the connection result.
+- Hand-written jobs match by `instance`, so the address must match the device's IP.
 
-- **Database**: SQLite database should be stored in a secure location with proper file permissions
-- **Network**: Use a reverse proxy (nginx, Traefik) with SSL/TLS for production
-- **Authentication**: The app has no built-in authentication yet. Put it behind your reverse proxy's auth (e.g. Authelia, Authentik), especially since webhooks and service discovery let the app reach other hosts on your network
-- **sqlite-web**: The example compose file publishes `sqlite-web` on port 5001 with no authentication; remove it or bind it to `127.0.0.1` if you don't need it
-- **Rate Limiting Storage**: For production or multi-instance deployments, configure `RATELIMIT_STORAGE_URL` to Redis/Memcached instead of the in-memory default
-- **Secrets Management**: Use environment variables or secrets manager for sensitive configuration
+**DHCP leases don't appear.**
+- Check **IPAM → DHCP leases** for the last import result.
+- A watched file must be mounted into the backend container at the path in `DNSMASQ_LEASES_PATH`.
 
-## 🤝 Contributing
+**Prometheus file export fails.** `PROMETHEUS_EXPORT_PATH` must exist and be writable (mount `./targets`).
 
-Contributions are welcome! Please follow these guidelines:
+For anything else, check `docker compose logs` and open an [issue](https://github.com/pyrodex/homelab-inventory/issues) with steps to reproduce and your environment.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+## Roadmap
 
-### Development Guidelines
+Recently shipped:
+- **2.1:** Add to monitoring from IPAM; reverse DNS in sweeps; Tailwind CSS 4.
+- **2.0:** IPAM with sweeps and DHCP leases; Prometheus HTTP SD and live status; tags, relationships, and impact; Ansible and NetBox exports; webhooks.
 
-- Follow existing code style
-- Add comments for complex logic
-- Update documentation as needed
-- Test your changes thoroughly
+Ideas for the future:
+- User authentication and roles
+- URL routing (deep links to devices and subnets)
+- A sortable table view for large inventories
+- Device templates
+- OpenAPI documentation
+- Running the test suite in CI
+- Real-time updates
 
-## 📝 License
+## Contributing
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+Contributions are welcome. Fork the repo, create a feature branch, and open a pull request against `main`. Please:
+- follow the existing code style
+- add tests for backend changes
+- update this README and the changelog
 
-## 🐛 Troubleshooting
+## License
 
-### Common Issues
+GNU General Public License v3.0. See [LICENSE](LICENSE).
 
-**Database is read-only:**
-- Check file permissions on the database file and directory
-- Ensure the Docker volume is mounted correctly
-- Verify the user running the container has write permissions
+## Acknowledgments
 
-**Frontend not connecting to backend:**
-- Verify both containers are running: `docker compose ps`
-- Check container health status: `docker compose ps` (should show "healthy")
-- Check backend logs: `docker compose logs backend`
-- Ensure CORS is properly configured
-- Verify backend health endpoint: `curl http://localhost:5000/api/health`
-
-**Prometheus export fails:**
-- Verify the export directory exists and is writable
-- Check `PROMETHEUS_EXPORT_PATH` environment variable
-- Review backend logs for specific errors
-
-**Port already in use:**
-- Change the port mapping in `docker-compose.yaml`
-- Or stop the service using the port
-
-**Backup fails:**
-- Verify `BACKUP_DIRECTORY` exists and is writable
-- Check disk space availability
-- Review backup script logs: `docker compose logs backend | grep -i backup`
-- Ensure database file exists and is accessible
-- See [Database Backup & Restore](#-database-backup--restore) section for detailed troubleshooting
-
-**Environment validation errors:**
-- Check application logs for specific validation errors
-- Verify required directories exist or can be created
-- Review environment variable values
-- In production, ensure `SECRET_KEY` is set (not using default)
-
-**API returns unexpected format:**
-- All endpoints now return standardized format with `success` field
-- Check for `data` field in success responses
-- Check for `error` and `details` fields in error responses
-- Update client code if needed to handle new format
-
-### Getting Help
-
-- Check the logs: `docker compose logs`
-- Review the [Issues](../../issues) page
-- Create a new issue with:
-  - Description of the problem
-  - Steps to reproduce
-  - Expected vs actual behavior
-  - Environment details (OS, Docker version, etc.)
-
-## 🎯 Roadmap
-
-### Completed Features ✅
-
-- [x] Input validation and sanitization (Marshmallow schemas)
-- [x] API rate limiting (Flask-Limiter)
-- [x] CORS configuration
-- [x] Modular backend architecture (blueprints)
-- [x] Database migrations (Flask-Migrate)
-- [x] Comprehensive error handling
-- [x] Basic test structure (pytest)
-- [x] Bulk import/export operations
-- [x] Advanced search and filtering
-- [x] Health check endpoints
-- [x] Performance optimizations (database indexes)
-- [x] iOS mobile optimizations
-- [x] Database backup automation
-- [x] Standardized API responses
-- [x] Enhanced UI error handling with field-specific validation
-- [x] Docker health checks
-- [x] Environment variable validation
-- [x] Device history and change tracking (audit log + API + UI)
-- [x] Dark mode theme with system auto option
-- [x] IPAM: CIDR subnets, free-address grid, next free IP, reserved ranges (2.0)
-- [x] Scheduled ping sweeps and dnsmasq DHCP lease import (2.0)
-- [x] Prometheus HTTP service discovery and live device status (2.0)
-- [x] Tags, device relationships, and impact analysis (2.0)
-- [x] Ansible dynamic inventory and NetBox CSV export (2.0)
-- [x] Signed webhooks for device and IPAM events (2.0)
-
-### Future Enhancements
-
-- [ ] User authentication and authorization
-- [ ] Multi-user support with role-based access
-- [ ] URL routing (deep links to devices and subnets)
-- [ ] Sortable table view for large inventories
-- [ ] Device templates and presets
-- [ ] Integration with other monitoring systems (Grafana, etc.)
-- [ ] Internationalization (i18n) support
-- [ ] Caching layer (Redis) for improved performance
-- [ ] API documentation (OpenAPI/Swagger)
-- [ ] WebSocket support for real-time updates
-
-## 🙏 Acknowledgments
-
-- Built with [React](https://react.dev/) and [Flask](https://flask.palletsprojects.com/)
-- Icons provided by [Lucide](https://lucide.dev/)
-- Styled with [Tailwind CSS](https://tailwindcss.com/)
-- Database management with [SQLAlchemy](https://www.sqlalchemy.org/)
-
----
-
-**Made with ❤️ for the homelab community**
-
+Built with [React](https://react.dev/), [Flask](https://flask.palletsprojects.com/), [SQLAlchemy](https://www.sqlalchemy.org/), [Tailwind CSS](https://tailwindcss.com/), and [Lucide](https://lucide.dev/) icons.

@@ -5,37 +5,62 @@ Releases before 2.0 are listed on the [GitHub releases page](https://github.com/
 
 ## [Unreleased]
 
-### Added
-- **Reverse DNS in IPAM.** Ping sweeps look up the PTR record for every address, not just ones that answer.
-  - Addresses whose only evidence is a PTR record get a new **rose** "Reverse DNS only" state. By default they're kept
-    out of free and next-free; set `IPAM_PTR_BLOCKS_FREE=false` to allow them.
-  - Any address with a PTR record gets a corner marker in the grid.
-  - PTR names show in tooltips, address details and the **In use** list, which flags inventoried devices with **no PTR**.
-  - New summary counts: `dns_only` and `with_ptr`.
-- `IPAM_SWEEP_PTR` (default on) to limit PTR lookups to addresses that answer.
-- **Add to monitoring from IPAM.** Click an address that's on the network but not in inventory, or an inventoried
-  one with monitoring off, to open an **Add to monitoring** window.
-  - It pings the address and checks common exporter ports (9100, 9633, 80, 443, 53, 3493, 8090), then pre-selects
-    monitors and a device type to match.
-  - One click creates the device with its monitors, or turns monitoring on for an existing device and adds monitors.
-  - New endpoints `POST /api/ipam/probe` and `POST /api/ipam/monitor`. Probing is limited to addresses inside defined
-    subnets.
+## [2.1.0] - 2026-10-14
 
-### Changed (frontend)
-- **Upgraded to Tailwind CSS 4** (from 3.4), replacing Dependabot's #25, which failed to build.
-  - Configuration moved from `tailwind.config.cjs` into `index.css`, and the PostCSS plugin is now
-    `@tailwindcss/postcss`. Autoprefixer was removed; v4 handles vendor prefixes itself.
-  - Layout is unchanged. All 56 screens (light/dark, desktop/mobile) render identically to 3.4 once the
-    color palette is held equal. The only visible change is v4's slightly more saturated palette.
-  - Compatibility rules keep three v3 defaults that v4 changed: the default border color, placeholder color,
-    and dimmed disabled selects. Custom CSS is placed in cascade layers so utilities still win where they
-    used to.
+IPAM can now act on what it finds. Click an address that's on the network but not in your inventory, and it's probed,
+matched to monitors, and added in one step. Sweeps also check reverse DNS, so stale PTR records and devices missing one
+stand out.
+
+Upgrading from 2.0 is drop-in: one additive migration runs automatically. See
+[Upgrading to 2.1](README.md#upgrading-to-21) for the two IPAM behavior changes.
+
+### Added
+- **Add to monitoring from IPAM** (#29). Click a violet, cyan, rose or amber address to open an **Add to monitoring**
+  window. You can click it in the grid, in **Not in inventory**, or on an amber **In use** row.
+  - It pings the address, reads its PTR record, and checks common exporter ports (9100, 9633, 80, 443, 53, 3493 and
+    8090). It then pre-selects monitors, a device type, and a name to match.
+  - One click creates the device with its monitors. For an inventoried device with monitoring off, it turns monitoring
+    on and adds the monitors you pick.
+  - It's recorded in device history and fires webhooks like any other change.
+  - New endpoints: `POST /api/ipam/probe` and `POST /api/ipam/monitor`. Probing is limited to addresses inside defined
+    subnets.
+- **Reverse DNS in IPAM** (#27). Ping sweeps look up the PTR record for every address, not just the ones that answer.
+  - Addresses whose only evidence is a PTR record get a new **rose** "Reverse DNS only" state.
+  - Any address with a PTR record gets a corner marker in the grid.
+  - PTR names show in tooltips, address details, and the **In use** list, which flags inventoried devices with
+    **no PTR**.
+  - New subnet summary counts: `dns_only` and `with_ptr`.
+- `IPAM_SWEEP_PTR` (default on): set it to `false` to look up PTR records only for addresses that answer.
+- `IPAM_PTR_BLOCKS_FREE` (default on): set it to `false` to offer DNS-only addresses as free again.
 
 ### Changed
-- PTR lookups now separate "no record" from resolver errors, so a DNS outage during a sweep never erases names already
-  recorded.
+- DNS-only addresses are kept out of free and next-free by default.
+- PTR lookups now tell "no record" apart from resolver errors, so a DNS outage during a sweep never erases names
+  already recorded.
 - `ipam.address_discovered` still fires only for addresses seen on the network. A PTR record alone doesn't count; an
   address known only from DNS fires when it first answers.
+- **Frontend upgraded to Tailwind CSS 4** (#28), replacing Dependabot's #25, which failed to build.
+  - Configuration moved from `tailwind.config.cjs` into `index.css`, and the PostCSS plugin is now
+    `@tailwindcss/postcss`. Autoprefixer was removed; v4 adds vendor prefixes itself.
+  - Layout is unchanged: all 56 screens (light and dark, desktop and mobile) match 3.4 once the palette is held equal.
+    The only visible change is v4's slightly more saturated colors.
+  - Compatibility rules keep three v3 defaults that v4 changed: border color, placeholder color, and dimmed disabled
+    selects.
+
+### Documentation
+- README rewritten for 2.1. New material:
+  - a full configuration reference and an IPAM color legend
+  - an API reference that covers every endpoint
+  - the response shapes, rate limits, image tags, and the CI and release process
+- Corrected the Quick start: `docker-compose.yaml` must be copied from the example, since it isn't in the repo.
+- Corrected the frontend dev-server port (3000) and the CI image tags.
+- Backend README rewritten for contributors.
+- Screenshot galleries regenerated as one consistent light and dark set from demo data, covering every current screen.
+
+### Upgrade notes
+- One additive migration (PTR columns on IP observations) runs on first start. Back up first.
+- After the first sweep on 2.1, addresses with a stale PTR record and nothing else claiming them stop counting as free.
+- Sweeps now make one DNS query per address in the subnet; set `IPAM_SWEEP_PTR=false` if that's too many.
 
 ## [2.0.0] - 2026-10-13
 
@@ -102,5 +127,6 @@ Upgrading from 1.x is drop-in (migrations run automatically), but read
 - The new target labels start new Prometheus time series for exported targets; see the README for how to drop them.
 - The app still has no built-in authentication; keep it behind your reverse proxy's auth.
 
-[Unreleased]: https://github.com/pyrodex/homelab-inventory/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/pyrodex/homelab-inventory/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/pyrodex/homelab-inventory/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/pyrodex/homelab-inventory/compare/v1.7.3...v2.0.0
