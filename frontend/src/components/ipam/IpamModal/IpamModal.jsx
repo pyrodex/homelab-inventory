@@ -1,12 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   X, Network, Plus, Pencil, Trash2, Copy, Check, RefreshCw, Loader2,
-  AlertTriangle, ArrowLeft, Layers, Router,
+  AlertTriangle, ArrowLeft, Layers, Router, Activity,
 } from 'lucide-react';
 import { subnetApi, locationApi } from '../../../services/api';
 import ScanPanel, { timeAgo } from './ScanPanel';
 import UnknownAddresses from './UnknownAddresses';
 import DhcpPanel from './DhcpPanel';
+import AddToMonitoringModal from './AddToMonitoringModal';
+
+// Statuses where "Add to monitoring" makes sense: seen on the network but not in
+// inventory, or in inventory with monitoring turned off.
+const MONITORABLE = new Set(['unmonitored', 'seen', 'dhcp', 'dns']);
 
 const STATUS_STYLES = {
   dhcp: {
@@ -243,7 +248,7 @@ function SubnetForm({ initial, locations, onCancel, onSaved, saving, setSaving }
   );
 }
 
-function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
+function IpamModal({ onClose, onAddDevice, onEditDevice, onDevicesChanged, refreshKey = 0 }) {
   const [subnets, setSubnets] = useState([]);
   const [unassigned, setUnassigned] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -257,6 +262,8 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
   const [filter, setFilter] = useState('all');
   const [selectedIp, setSelectedIp] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [monitorTarget, setMonitorTarget] = useState(null); // {ip, status, observed}
+  const [notice, setNotice] = useState(null);
 
   const loadList = useCallback(async () => {
     setLoadingList(true);
@@ -305,10 +312,10 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
   }, [selectedId, loadDetail, refreshKey]);
 
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape' && !formMode) onClose(); };
+    const onKey = (e) => { if (e.key === 'Escape' && !formMode && !monitorTarget) onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, formMode]);
+  }, [onClose, formMode, monitorTarget]);
 
   const visibleAddresses = useMemo(() => {
     if (!detail?.addresses) return [];
@@ -354,6 +361,22 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
     hostname: observed?.hostname || null,
     discovered: !!observed,
   });
+
+  const openMonitor = (entry) => {
+    setNotice(null);
+    setMonitorTarget({ ip: entry.ip, status: entry.status, observed: entry.observed || null });
+  };
+
+  const handleMonitored = (result) => {
+    setMonitorTarget(null);
+    const d = result.device;
+    setNotice(result.created
+      ? `Added ${d.name} (${d.ip_address}) with ${result.added_monitors.join(', ')} monitoring.`
+      : `Monitoring is on for ${d.name}${result.added_monitors.length ? `; added ${result.added_monitors.join(', ')}` : ''}.`);
+    loadList();
+    loadDetail(selectedId);
+    onDevicesChanged?.();
+  };
 
   const renderList = () => (
     <aside className="md:w-72 md:shrink-0 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col max-h-60 md:max-h-none">
@@ -498,6 +521,14 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
             </button>
           ))}
           <CopyButton text={selectedEntry.ip} />
+          {MONITORABLE.has(selectedEntry.status) && (
+            <button
+              onClick={() => openMonitor(selectedEntry)}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-green-600 text-white"
+            >
+              <Activity size={14} /> {selectedEntry.status === 'unmonitored' ? 'Turn on monitoring' : 'Add to monitoring'}
+            </button>
+          )}
           {(selectedEntry.status === 'free' || selectedEntry.observed) && (
             <button
               onClick={() => addDeviceAt(selectedEntry.ip, selectedEntry.observed || null)}
@@ -644,8 +675,8 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                 return (
                   <button
                     key={a.ip}
-                    onClick={() => setSelectedIp(a.ip)}
-                    title={`${a.ip} — ${style.label}${names ? `: ${names}` : ''}${a.ptr ? `\nPTR: ${a.ptr}` : ''}`}
+                    onClick={() => { setSelectedIp(a.ip); if (MONITORABLE.has(a.status)) openMonitor(a); }}
+                    title={`${a.ip} — ${style.label}${names ? `: ${names}` : ''}${a.ptr ? `\nPTR: ${a.ptr}` : ''}${MONITORABLE.has(a.status) ? '\nClick to add to monitoring' : ''}`}
                     className={`relative h-8 rounded border text-[11px] font-mono tabular-nums transition-colors ${style.cell} ${
                       selectedIp === a.ip ? 'ring-2 ring-offset-1 ring-blue-500 dark:ring-offset-gray-900' : ''
                     }`}
@@ -667,7 +698,13 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
         <UnknownAddresses
           items={detail.unknown_addresses || []}
           onAdd={(u) => addDeviceAt(u.ip, u)}
-          onSelect={(ip) => { setFilter('all'); setSelectedIp(ip); }}
+          onSelect={(ip) => {
+            setFilter('all');
+            setSelectedIp(ip);
+            const entry = detail.addresses?.find((a) => a.ip === ip);
+            const u = (detail.unknown_addresses || []).find((x) => x.ip === ip);
+            openMonitor({ ip, status: entry?.status || u?.status || 'seen', observed: entry?.observed || u });
+          }}
         />
 
         {/* Free ranges + used list */}
@@ -697,7 +734,10 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
               {detail.used_addresses.map((u) => (
                 <button
                   key={u.ip}
-                  onClick={() => onEditDevice?.(u.devices[0]?.device_id)}
+                  onClick={() => (u.status === 'unmonitored'
+                    ? (setSelectedIp(u.ip), openMonitor(u))
+                    : onEditDevice?.(u.devices[0]?.device_id))}
+                  title={u.status === 'unmonitored' ? 'Monitoring is off: click to turn it on' : 'Edit device'}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800/60"
                 >
                   <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_STYLES[u.status].swatch}`} />
@@ -745,6 +785,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
           </div>
         </div>
 
+        {notice && (
+          <div role="status" className="mx-5 mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-sm text-green-800 dark:text-green-200 flex items-start gap-2">
+            <Check size={16} className="shrink-0 mt-0.5" /> <span className="flex-1">{notice}</span>
+            <button onClick={() => setNotice(null)} aria-label="Dismiss" className="shrink-0"><X size={14} /></button>
+          </div>
+        )}
         {error && (
           <div className="mx-5 mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-sm text-red-700 dark:text-red-200">{error}</div>
         )}
@@ -768,6 +814,22 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
           </main>
         </div>
       </div>
+      {monitorTarget && (
+        <AddToMonitoringModal
+          key={monitorTarget.ip}
+          ip={monitorTarget.ip}
+          status={monitorTarget.status}
+          observed={monitorTarget.observed}
+          onClose={() => setMonitorTarget(null)}
+          onDone={handleMonitored}
+          onOpenFullForm={({ name, location_id, hostname }) => {
+            const { ip, observed } = monitorTarget;
+            setMonitorTarget(null);
+            onAddDevice?.({ ip_address: ip, location_id: location_id ?? '', name, hostname: hostname || null, discovered: !!observed });
+          }}
+          onEditDevice={(id) => { setMonitorTarget(null); onEditDevice?.(id); }}
+        />
+      )}
     </div>
   );
 }

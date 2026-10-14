@@ -28,6 +28,7 @@ from routes.subnets import register_subnet_routes
 from routes.links import register_link_routes
 from routes.exports import register_export_routes
 from routes.webhooks import register_webhook_routes
+from routes.onboarding import register_onboarding_routes
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -173,6 +174,7 @@ register_subnet_routes(app, limiter)
 register_link_routes(app, limiter)
 register_export_routes(app, limiter)
 register_webhook_routes(app, limiter)
+register_onboarding_routes(app, limiter)
 
 # Health check endpoint
 @app.route('/health', methods=['GET'])

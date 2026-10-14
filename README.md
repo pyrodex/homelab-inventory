@@ -59,6 +59,7 @@ A modern, web-based inventory for homelab infrastructure: track devices and how 
 - **Ping Sweeps**: Scheduled per-subnet sweeps (IPv4) find addresses that answer but aren't in inventory
 - **Reverse DNS**: Sweeps check PTR records for every address; DNS-only addresses get their own color and every PTR holder a marker, so stale DNS and devices missing records stand out
 - **DHCP Leases**: Import dnsmasq leases (watched file, `curl` push, or upload) so active leases aren't handed out twice
+- **Add to Monitoring**: Click an address that's on the network but not in inventory (or in inventory with monitoring off) to probe it and start monitoring it in one step
 
 ### User Interface
 - **Modern React UI**: Responsive interface built with React and Tailwind CSS
@@ -482,6 +483,12 @@ Subnets larger than 4,096 addresses skip the grid and show compressed free range
   Each source is a snapshot: leases missing from its next import are released. Expired leases stop counting automatically.
 - **On the network, not in inventory** lists every such address with its evidence. Click **Add** to create a device with the IP and hostname prefilled.
 
+**Add to monitoring.** Click a violet, cyan, rose or amber address (in the grid, the **On the network, not in inventory** list, or an amber row under **In use**) to open the **Add to monitoring** window.
+- It pings the address and tries TCP connections to common exporter ports: node_exporter 9100, smartctl_exporter 9633, HTTP 80, HTTPS 443, DNS 53, NUT 3493 and Docker/cAdvisor 8090. Monitors for whatever answers are ticked for you, with the reason shown. SNMP and IPMI use UDP, so they can't be detected; tick them yourself.
+- **Not in inventory**: the name comes from the DHCP or PTR hostname, the location from the subnet, and the device type from what answered (NUT → UPS, node_exporter → Linux server). **Add & monitor** creates the device and its monitors in one step. Use **Open full device form** to fill in everything else.
+- **Monitoring off**: existing monitors are shown as already set up. **Turn on monitoring** enables the device and adds any monitors you ticked.
+- Only addresses inside a defined subnet can be probed, so this can't be used to scan arbitrary hosts. The change appears in device history and fires the usual webhooks.
+
 ### Managing Vendors, Models, and Locations
 
 1. Click the **"Admin"** button in the header
@@ -682,6 +689,8 @@ All API endpoints are prefixed with `/api`
 - `GET /api/subnets/:id/scan` - Sweep status and last result
 - `POST /api/ipam/dhcp/leases[?source=name]` - Import a dnsmasq lease file (raw body or multipart `file`)
 - `GET /api/ipam/dhcp/status` - Watched files, last import results, active leases per source
+- `POST /api/ipam/probe` - `{ip}`: ping, PTR and exporter-port check for an address inside a defined subnet, with suggested monitors, device type and name, plus the existing device if any
+- `POST /api/ipam/monitor` - Add to monitoring in one transaction. With `device_id`: turn monitoring on and add `monitors` (duplicates skipped). Without: create a device at `ip` (`name`, `device_type`, `deviceFunction`, `location_id`, `tags` optional) with `monitors` (201; 409 if the IP is already used)
 
 ### API Response Format
 

@@ -752,6 +752,13 @@ function App() {
           onClose={() => setShowIpamModal(false)}
           onAddDevice={handleIpamAdd}
           onEditDevice={handleIpamEdit}
+          onDevicesChanged={() => {
+            fetchDevices();
+            fetchAllDevices();
+            fetchStats();
+            fetchTags();
+            fetchPromStatus(true);
+          }}
           refreshKey={ipamRefreshKey}
         />
       )}
