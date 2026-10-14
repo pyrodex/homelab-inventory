@@ -371,3 +371,9 @@ export const webhookApi = {
   test: (id) => apiRequest(`/webhooks/${id}/test`, { method: 'POST' }),
   deliveries: (id) => apiRequest(`/webhooks/${id}/deliveries`),
 };
+
+// IPAM "Add to monitoring"
+export const ipamMonitorApi = {
+  probe: (ip) => apiRequest('/ipam/probe', { method: 'POST', body: JSON.stringify({ ip }) }),
+  monitor: (payload) => apiRequest('/ipam/monitor', { method: 'POST', body: JSON.stringify(payload) }),
+};

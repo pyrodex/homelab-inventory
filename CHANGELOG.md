@@ -13,6 +13,13 @@ Releases before 2.0 are listed on the [GitHub releases page](https://github.com/
   - PTR names show in tooltips, address details and the **In use** list, which flags inventoried devices with **no PTR**.
   - New summary counts: `dns_only` and `with_ptr`.
 - `IPAM_SWEEP_PTR` (default on) to limit PTR lookups to addresses that answer.
+- **Add to monitoring from IPAM.** Click an address that's on the network but not in inventory, or an inventoried
+  one with monitoring off, to open an **Add to monitoring** window.
+  - It pings the address and checks common exporter ports (9100, 9633, 80, 443, 53, 3493, 8090), then pre-selects
+    monitors and a device type to match.
+  - One click creates the device with its monitors, or turns monitoring on for an existing device and adds monitors.
+  - New endpoints `POST /api/ipam/probe` and `POST /api/ipam/monitor`. Probing is limited to addresses inside defined
+    subnets.
 
 ### Changed (frontend)
 - **Upgraded to Tailwind CSS 4** (from 3.4), replacing Dependabot's #25, which failed to build.
