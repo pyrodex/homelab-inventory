@@ -356,7 +356,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
   });
 
   const renderList = () => (
-    <aside className="md:w-72 md:flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col max-h-60 md:max-h-none">
+    <aside className="md:w-72 md:shrink-0 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col max-h-60 md:max-h-none">
       <div className="p-3 border-b border-gray-200 dark:border-gray-800">
         <button
           onClick={() => setFormMode('create')}
@@ -384,7 +384,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                 >
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white truncate">{s.cidr}</span>
-                    {s.vlan_id && <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">VLAN {s.vlan_id}</span>}
+                    {s.vlan_id && <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">VLAN {s.vlan_id}</span>}
                   </div>
                   {s.name && <div className="text-xs text-gray-600 dark:text-gray-300 truncate">{s.name}</div>}
                   <UtilizationBar summary={s.summary} className="mt-2" />
@@ -473,7 +473,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
     return (
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`w-4 h-4 rounded flex-shrink-0 ${style.swatch}`} />
+          <span className={`w-4 h-4 rounded-sm shrink-0 ${style.swatch}`} />
           <span className="font-mono font-semibold text-gray-900 dark:text-white">{selectedEntry.ip}</span>
           <span className="text-sm text-gray-600 dark:text-gray-300">{style.label}</span>
           {selectedEntry.ptr && selectedEntry.status !== 'dns' && (
@@ -535,7 +535,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
             )}
             {subnet.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{subnet.description}</p>}
           </div>
-          <div className="flex gap-2 sm:ml-auto flex-shrink-0">
+          <div className="flex gap-2 sm:ml-auto shrink-0">
             <button onClick={() => setFormMode('edit')} className="px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 flex items-center gap-1">
               <Pencil size={14} /> Edit
             </button>
@@ -577,10 +577,10 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
         {/* Warnings */}
         {(detail.conflicts.length > 0 || detail.reserved_error) && (
           <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-200 space-y-1">
-            {detail.reserved_error && <div className="flex gap-2"><AlertTriangle size={16} className="flex-shrink-0 mt-0.5" /> Reserved ranges ignored: {detail.reserved_error}</div>}
+            {detail.reserved_error && <div className="flex gap-2"><AlertTriangle size={16} className="shrink-0 mt-0.5" /> Reserved ranges ignored: {detail.reserved_error}</div>}
             {detail.conflicts.map((c) => (
               <div key={c.ip} className="flex gap-2">
-                <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                 <span><span className="font-mono">{c.ip}</span> is claimed by {c.devices.map((d) => d.name).join(', ')}</span>
               </div>
             ))}
@@ -619,7 +619,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                   <button
                     key={key}
                     onClick={() => setFilter(key)}
-                    className={`px-3 py-1 rounded-md ${filter === key ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+                    className={`px-3 py-1 rounded-md ${filter === key ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
                   >
                     {text}
                   </button>
@@ -628,11 +628,11 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300">
                 {LEGEND_ORDER.map((key) => (
                   <span key={key} className="flex items-center gap-1">
-                    <span className={`w-3 h-3 rounded-sm ${STATUS_STYLES[key].swatch}`} /> {STATUS_STYLES[key].label}
+                    <span className={`w-3 h-3 rounded-xs ${STATUS_STYLES[key].swatch}`} /> {STATUS_STYLES[key].label}
                   </span>
                 ))}
                 <span className="flex items-center gap-1">
-                  <span className="relative w-3 h-3 rounded-sm border border-gray-300 dark:border-gray-600"><PtrDot className="absolute -top-0.5 -right-0.5" /></span>
+                  <span className="relative w-3 h-3 rounded-xs border border-gray-300 dark:border-gray-600"><PtrDot className="absolute -top-0.5 -right-0.5" /></span>
                   Has reverse DNS (PTR)
                 </span>
               </div>
@@ -681,7 +681,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                 return (
                   <div key={r.start} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
                     <span className="font-mono truncate text-gray-900 dark:text-gray-100">{text}</span>
-                    <span className="flex items-center gap-2 flex-shrink-0">
+                    <span className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-gray-500 tabular-nums">{formatCount(r.size)}</span>
                       <CopyButton text={text} label="" />
                     </span>
@@ -700,12 +700,12 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
                   onClick={() => onEditDevice?.(u.devices[0]?.device_id)}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-gray-50 dark:hover:bg-gray-800/60"
                 >
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${STATUS_STYLES[u.status].swatch}`} />
-                  <span className="font-mono w-36 flex-shrink-0 truncate">{u.ip}</span>
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${STATUS_STYLES[u.status].swatch}`} />
+                  <span className="font-mono w-36 shrink-0 truncate">{u.ip}</span>
                   <span className="truncate text-gray-700 dark:text-gray-200">{u.devices.map((d) => d.name).join(', ')}</span>
                   {u.ptr && <span className="truncate text-xs text-rose-700 dark:text-rose-300 font-mono" title="Reverse DNS (PTR)">{u.ptr}</span>}
-                  {!u.ptr && u.ptr_checked && <span className="text-xs text-gray-400 flex-shrink-0" title="Swept, but no PTR record">no PTR</span>}
-                  {u.notes.length > 0 && <span className="ml-auto text-xs text-amber-600 flex-shrink-0">{u.notes.join(', ')}</span>}
+                  {!u.ptr && u.ptr_checked && <span className="text-xs text-gray-400 shrink-0" title="Swept, but no PTR record">no PTR</span>}
+                  {u.notes.length > 0 && <span className="ml-auto text-xs text-amber-600 shrink-0">{u.notes.join(', ')}</span>}
                 </button>
               ))}
             </div>
@@ -717,7 +717,7 @@ function IpamModal({ onClose, onAddDevice, onEditDevice, refreshKey = 0 }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs" onClick={onClose} />
       <div className="relative bg-white dark:bg-gray-900 dark:text-gray-100 rounded-lg shadow-2xl w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3">

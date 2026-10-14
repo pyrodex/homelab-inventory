@@ -172,8 +172,8 @@ function AdminModal({ onClose, onError }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-hidden flex flex-col modal-content transition-colors">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 md:p-4 z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-screen md:max-h-[90vh] overflow-hidden flex flex-col modal-content transition-colors">
         <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Administration</h2>
@@ -338,7 +338,7 @@ function VendorsTab({
                       updateVendor(vendor.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                   autoFocus 
                 />
               ) : (
@@ -352,14 +352,14 @@ function VendorsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingVendor(vendor.id)} 
-                  className="p-2 text-blue-600 dark:text-blue-400 active:bg-blue-100 dark:active:bg-blue-900/30 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="p-2 text-blue-600 dark:text-blue-400 active:bg-blue-100 dark:active:bg-blue-900/30 rounded-sm transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Edit vendor"
                 >
                   <Edit2 size={18} />
                 </button>
                 <button 
                   onClick={() => deleteVendor(vendor.id)} 
-                  className="p-2 text-red-600 dark:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 rounded transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  className="p-2 text-red-600 dark:text-red-300 active:bg-red-100 dark:active:bg-red-900/30 rounded-sm transition-colors touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
                   aria-label="Delete vendor"
                 >
                   <Trash2 size={18} />
@@ -456,7 +456,7 @@ function ModelsTab({
                   <select 
                     defaultValue={model.vendor_id} 
                     onBlur={(e) => updateModel(model.id, model.name, e.target.value)} 
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base touch-manipulation bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                   >
                     {vendors.map(vendor => (
                       <option key={vendor.id} value={vendor.id}>{vendor.name}</option>
@@ -471,7 +471,7 @@ function ModelsTab({
                         updateModel(model.id, e.target.value, model.vendor_id); 
                       } 
                     }} 
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                     autoFocus 
                   />
                 </div>
@@ -488,14 +488,14 @@ function ModelsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingModel(model.id)} 
-                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-sm transition-colors"
                   aria-label="Edit model"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button 
                   onClick={() => deleteModel(model.id)} 
-                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-sm transition-colors"
                   aria-label="Delete model"
                 >
                   <Trash2 size={16} />
@@ -566,7 +566,7 @@ function LocationsTab({
                       updateLocation(location.id, e.target.value); 
                     } 
                   }} 
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" 
                   autoFocus 
                 />
               ) : (
@@ -580,14 +580,14 @@ function LocationsTab({
               <div className="flex gap-2">
                 <button 
                   onClick={() => setEditingLocation(location.id)} 
-                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                  className="p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-sm transition-colors"
                   aria-label="Edit location"
                 >
                   <Edit2 size={16} />
                 </button>
                 <button 
                   onClick={() => deleteLocation(location.id)} 
-                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                  className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-sm transition-colors"
                   aria-label="Delete location"
                 >
                   <Trash2 size={16} />

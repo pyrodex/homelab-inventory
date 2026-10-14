@@ -30,7 +30,7 @@ const FIELD_LABELS = {
 };
 
 const Section = ({ title, description, isOpen, onToggle, children }) => (
-  <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm transition-colors">
+  <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-xs transition-colors">
     <button
       type="button"
       onClick={onToggle}
@@ -407,8 +407,8 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
   const saveButtonText = device && device.id ? 'Update Device' : device && !isPrefill ? 'Clone Device' : 'Create Device';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-0 md:p-4 z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-[100vh] md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-0 md:p-4 z-50">
+      <div className="bg-white dark:bg-gray-900 rounded-none md:rounded-lg max-w-4xl w-full h-full md:h-auto max-h-screen md:max-h-[90vh] overflow-y-auto modal-content transition-colors">
         <div className="sticky top-0 bg-white dark:bg-gray-900 z-10 p-4 md:p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{modalTitle}</h2>
           <button
@@ -644,21 +644,21 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded-sm cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
                   <input 
                     type="checkbox" 
                     checked={formData.poe_powered} 
                     onChange={(e) => setFormData({ ...formData, poe_powered: e.target.checked })} 
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
+                    className="w-5 h-5 text-blue-600 rounded-sm focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">PoE Powered</span>
                 </label>
-                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
+                <label className="flex items-center gap-2 p-3 active:bg-gray-50 dark:active:bg-gray-800 rounded-sm cursor-pointer touch-manipulation min-h-[44px] border border-gray-200 dark:border-gray-700">
                   <input 
                     type="checkbox" 
                     checked={formData.monitoring_enabled} 
                     onChange={(e) => setFormData({ ...formData, monitoring_enabled: e.target.checked })} 
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500 touch-manipulation" 
+                    className="w-5 h-5 text-blue-600 rounded-sm focus:ring-2 focus:ring-blue-500 touch-manipulation" 
                   />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Monitoring Enabled</span>
                 </label>
@@ -684,7 +684,7 @@ function DeviceModal({ device, onClose, onSave, onError, fromDiscovery = false, 
                       <button 
                         type="button" 
                         onClick={() => removeMonitor(index)} 
-                      className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                      className="p-1 text-red-600 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-sm transition-colors"
                         aria-label="Remove monitor"
                       >
                         <X size={16} />

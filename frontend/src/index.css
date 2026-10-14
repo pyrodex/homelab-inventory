@@ -1,136 +1,194 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-html {
-  overflow-x: hidden;
-  width: 100%;
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --grid-template-columns-16: repeat(16, minmax(0, 1fr));
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  /* iOS safe area support */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100vw;
-}
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-html.dark {
-  color-scheme: dark;
-}
-
-html.dark body {
-  background-color: #111827;
-  color: #e5e7eb;
-}
-
-html.dark input,
-html.dark select,
-html.dark textarea {
-  background-color: #0b1220;
-  color: #f9fafb;
-  border-color: #374151;
-}
-
-html.dark input:focus,
-html.dark select:focus,
-html.dark textarea:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
-}
-
-#root {
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100vw;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-/* iOS-specific optimizations */
-@supports (-webkit-touch-callout: none) {
-  /* Prevent iOS text selection on buttons */
-  button {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    touch-action: manipulation;
-  }
-  
-  /* Prevent iOS zoom on input focus */
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  input[type="tel"],
-  input[type="url"],
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevents iOS zoom on focus */
-  }
-  
-  /* Improve select appearance on iOS */
-  select {
-    -webkit-appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.5rem center;
-    background-repeat: no-repeat;
-    background-size: 1.5em 1.5em;
-    padding-right: 2.5rem;
-  }
-  
-  /* Improve scrolling on iOS */
-  * {
-    -webkit-overflow-scrolling: touch;
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
   }
 }
 
-/* Mobile-specific styles */
-@media (max-width: 768px) {
-  /* Prevent horizontal scroll - ensure all containers respect viewport */
-  html, body, #root {
+/*
+  More v3 parity (found by screenshot comparison, not handled by the upgrade tool):
+  - v4 placeholders default to 50% of the text color; v3 used gray-400.
+  - v4's preflight forces opacity: 1 on form controls, which removes Chrome's
+    built-in dimming of disabled <select>s that v3 relied on.
+*/
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  select:disabled {
+    opacity: 0.7;
+  }
+}
+
+/*
+  Tailwind v4 puts its utilities in cascade layers, and unlayered CSS beats
+  layered CSS regardless of specificity. These base styles must stay inside
+  @layer base so component utilities (e.g. dark:bg-gray-800 on inputs) still
+  override them, as they did in v3.
+*/
+@layer base {
+  html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* iOS safe area support */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     overflow-x: hidden;
     width: 100%;
     max-width: 100vw;
-    position: relative;
   }
-  
-  /* Prevent common elements from overflowing */
-  img, video, iframe, embed, object {
-    max-width: 100%;
-    height: auto;
+
+  html.dark {
+    color-scheme: dark;
   }
-  
-  /* Improve modal scrolling on iOS */
-  .modal-content {
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+
+  html.dark body {
+    background-color: #111827;
+    color: #e5e7eb;
   }
-  
-  /* Ensure proper spacing for safe areas on iOS */
-  .modal-content {
-    padding-bottom: env(safe-area-inset-bottom);
+
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+      monospace;
+  }
+
+  /* iOS-specific optimizations */
+  @supports (-webkit-touch-callout: none) {
+    /* Prevent iOS text selection on buttons */
+    button {
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+
+    /* Prevent iOS zoom on input focus */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="url"],
+    select,
+    textarea {
+      font-size: 16px !important; /* Prevents iOS zoom on focus */
+    }
+
+    /* Improve select appearance on iOS */
+    select {
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.5rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+
+    /* Improve scrolling on iOS */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    /* Prevent horizontal scroll - ensure all containers respect viewport */
+    html, body, #root {
+      overflow-x: hidden;
+      width: 100%;
+      max-width: 100vw;
+      position: relative;
+    }
+
+    /* Prevent common elements from overflowing */
+    img, video, iframe, embed, object {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Improve modal scrolling on iOS */
+    .modal-content {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+
+    /* Ensure proper spacing for safe areas on iOS */
+    .modal-content {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   }
 }
 
-/* IPAM: striped fill for reserved addresses */
-.ipam-reserved {
-  background-color: #e5e7eb;
-  background-image: repeating-linear-gradient(
-    45deg, transparent 0 4px, rgba(107, 114, 128, 0.35) 4px 6px
-  );
+/*
+  Dark-mode form defaults. In v3 these unlayered rules (specificity 0,1,2)
+  beat plain utilities like border-gray-300 (0,1,0) but lost to dark:
+  utilities (0,2,0). Placing them in the utilities layer keeps that exact
+  specificity contest; in base they'd lose to every utility, unlayered
+  they'd beat even dark: utilities.
+*/
+@layer utilities {
+  html.dark input,
+  html.dark select,
+  html.dark textarea {
+    background-color: #0b1220;
+    color: #f9fafb;
+    border-color: #374151;
+  }
+
+  html.dark input:focus,
+  html.dark select:focus,
+  html.dark textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+  }
 }
-.dark .ipam-reserved {
-  background-color: #374151;
-  background-image: repeating-linear-gradient(
-    45deg, transparent 0 4px, rgba(209, 213, 219, 0.25) 4px 6px
-  );
+
+@layer components {
+  /* IPAM: striped fill for reserved addresses */
+  .ipam-reserved {
+    background-color: #e5e7eb;
+    background-image: repeating-linear-gradient(
+      45deg, transparent 0 4px, rgba(107, 114, 128, 0.35) 4px 6px
+    );
+  }
+  .dark .ipam-reserved {
+    background-color: #374151;
+    background-image: repeating-linear-gradient(
+      45deg, transparent 0 4px, rgba(209, 213, 219, 0.25) 4px 6px
+    );
+  }
 }

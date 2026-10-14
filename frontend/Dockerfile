@@ -11,7 +11,6 @@ RUN npm install
 # Copy source code and config files
 COPY index.html ./
 COPY vite.config.js ./
-COPY tailwind.config.cjs ./
 COPY postcss.config.cjs ./
 COPY src ./src
 

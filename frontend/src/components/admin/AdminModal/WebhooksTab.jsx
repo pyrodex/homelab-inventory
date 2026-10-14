@@ -191,7 +191,7 @@ function WebhooksTab({ onError }) {
             <KeyRound size={16} /> Signing secret for &quot;{revealed.name}&quot;. Copy it now; it won&apos;t be shown again.
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-2 py-1 rounded bg-white dark:bg-gray-900 font-mono text-xs break-all">{revealed.secret}</code>
+            <code className="flex-1 px-2 py-1 rounded-sm bg-white dark:bg-gray-900 font-mono text-xs break-all">{revealed.secret}</code>
             <button onClick={copySecret} className="p-1.5 rounded-md bg-white dark:bg-gray-800" aria-label="Copy secret">{copied ? <Check size={14} /> : <Copy size={14} />}</button>
             <button onClick={() => setRevealed(null)} className="p-1.5 rounded-md bg-white dark:bg-gray-800" aria-label="Dismiss"><X size={14} /></button>
           </div>

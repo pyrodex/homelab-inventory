@@ -34,7 +34,7 @@ export function TagChip({ name, onRemove, onClick, active = false, size = 'sm' }
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRemove(name); }}
-          className="ml-0.5 -mr-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10"
+          className="ml-0.5 -mr-0.5 rounded-sm hover:bg-black/10 dark:hover:bg-white/10"
           aria-label={`Remove tag ${name}`}
         >
           <X size={12} />
@@ -107,7 +107,7 @@ export function TagInput({ value = [], onChange, suggestions = [] }) {
           onKeyDown={onKeyDown}
           onBlur={() => draft.trim() && add(draft)}
           placeholder={value.length ? '' : 'prod, storage, k8s…'}
-          className="flex-1 min-w-[8rem] bg-transparent outline-none text-base text-gray-900 dark:text-gray-100 px-1"
+          className="flex-1 min-w-32 bg-transparent outline-hidden text-base text-gray-900 dark:text-gray-100 px-1"
           aria-label="Add tag"
         />
         <datalist id={listId}>

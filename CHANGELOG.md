@@ -14,6 +14,16 @@ Releases before 2.0 are listed on the [GitHub releases page](https://github.com/
   - New summary counts: `dns_only` and `with_ptr`.
 - `IPAM_SWEEP_PTR` (default on) to limit PTR lookups to addresses that answer.
 
+### Changed (frontend)
+- **Upgraded to Tailwind CSS 4** (from 3.4), replacing Dependabot's #25, which failed to build.
+  - Configuration moved from `tailwind.config.cjs` into `index.css`, and the PostCSS plugin is now
+    `@tailwindcss/postcss`. Autoprefixer was removed; v4 handles vendor prefixes itself.
+  - Layout is unchanged. All 56 screens (light/dark, desktop/mobile) render identically to 3.4 once the
+    color palette is held equal. The only visible change is v4's slightly more saturated palette.
+  - Compatibility rules keep three v3 defaults that v4 changed: the default border color, placeholder color,
+    and dimmed disabled selects. Custom CSS is placed in cascade layers so utilities still win where they
+    used to.
+
 ### Changed
 - PTR lookups now separate "no record" from resolver errors, so a DNS outage during a sweep never erases names already
   recorded.
